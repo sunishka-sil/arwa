@@ -1,0 +1,248 @@
+// swift-interface-format-version: 1.0
+// swift-compiler-version: Apple Swift version 6.2.3 effective-5.10 (swiftlang-6.2.3.3.21 clang-1700.6.3.2)
+// swift-module-flags: -target arm64-apple-ios15.0 -enable-objc-interop -enable-library-evolution -swift-version 5 -enforce-exclusivity=checked -O -enable-experimental-feature DebugDescriptionMacro -enable-bare-slash-regex -module-name MLVisionM6SDK
+// swift-module-flags-ignorable: -no-verify-emitted-module-interface -formal-cxx-interoperability-mode=off -interface-compiler-version 6.2.3
+import AEXML
+import AMapNaviKit
+import AMapSearchKit
+import AVFAudio
+import AVFoundation
+import Alamofire
+import CFNetwork
+import SystemConfiguration.CaptiveNetwork
+import CocoaAsyncSocket
+import CocoaLumberjack
+import Combine
+import CommonCrypto
+import Contacts
+import CoreBluetooth
+import CoreFoundation
+import CoreLocation
+import CoreTelephony
+import CryptoKit
+import Darwin
+import EmptyDataSet_Swift
+import FMDB
+import Foundation
+import LSTPopView
+import LinkPresentation
+import MBProgressHUD
+@_exported import MLVisionM6SDK
+import MicrosoftCognitiveServicesSpeech
+import Moya
+import MultimodalDialogTongyiMetathings
+import Network
+import NetworkExtension
+import ObjectiveC
+import PDFKit
+import Photos
+import SSZipArchive
+import Security
+import SnapKit
+import Swift
+import SystemConfiguration
+import UIKit
+import UserNotifications
+import _Concurrency
+import _StringProcessing
+import _SwiftConcurrencyShims
+import multimodal_dialog
+public struct MLAudioRecordResult {
+  public let uuid: Swift.String
+  public let localPath: Swift.String
+  public let fileName: Swift.String
+  public let originText: Swift.String
+  public let createTime: Swift.String
+}
+public struct MLAudioSummaryResult {
+  public let uuid: Swift.String
+  public let title: Swift.String
+  public let summary: Swift.String
+  public let originText: Swift.String
+}
+@available(iOS 15.0, *)
+extension MLVisionM6SDK.BaseApiTarget {
+  public var baseURL: Foundation.URL {
+    get
+  }
+  #if compiler(>=5.3) && $NonescapableTypes
+  public var headers: [Swift.String : Swift.String]? {
+    get
+  }
+  #endif
+}
+public enum HostType {
+  case ota
+  case userFeedback
+  case accout
+  case custom(Swift.String)
+}
+public protocol HostProtocol {
+  var hostType: MLVisionM6SDK.HostType { get }
+}
+public protocol BaseApiTarget : MLVisionM6SDK.HostProtocol, Moya.TargetType {
+}
+@objc @_inheritsConvenienceInitializers public class MLResourceLoader : ObjectiveC.NSObject {
+  #if compiler(>=5.3) && $NonescapableTypes
+  public static func loadView<T>(fromXib name: Swift.String, owner: Any? = nil, type: T.Type = T.self) -> T where T : UIKit.UIView
+  #endif
+  #if compiler(>=5.3) && $NonescapableTypes
+  public static func loadViewController<T>(_ type: T.Type, nibName: Swift.String? = nil) -> T where T : UIKit.UIViewController
+  #endif
+  #if compiler(>=5.3) && $NonescapableTypes
+  public static func loadViewController<T>(fromStoryboard storyboardName: Swift.String, identifier: Swift.String? = nil, type: T.Type = T.self) -> T where T : UIKit.UIViewController
+  #endif
+  public static func registerCellXib(for tableView: UIKit.UITableView, cellClass: Swift.AnyClass)
+  public static func dequeueCell<T>(from tableView: UIKit.UITableView, for indexPath: Foundation.IndexPath) -> T where T : UIKit.UITableViewCell
+  public static func registerColletionViewCellXib(for collectionView: UIKit.UICollectionView, cellClass: Swift.AnyClass)
+  public static func dequeueCollectionViewCell<T>(from collectionView: UIKit.UICollectionView, for indexPath: Foundation.IndexPath) -> T where T : UIKit.UICollectionViewCell
+  #if compiler(>=5.3) && $NonescapableTypes
+  public static func getBundleFile(name: Swift.String, type: Swift.String) -> Foundation.URL?
+  #endif
+  #if compiler(>=5.3) && $NonescapableTypes
+  public static func getBundlePathFile(name: Swift.String, type: Swift.String) -> Swift.String?
+  #endif
+  #if compiler(>=5.3) && $NonescapableTypes
+  @objc public static func loadImage(named name: Swift.String) -> UIKit.UIImage?
+  #endif
+  public static func localizedString(forKey key: Swift.String) -> Swift.String
+  @objc override dynamic public init()
+  @objc deinit
+}
+public let MLVisonBLEDiscoverDeviceNotification: Swift.String
+public let MLVisonBLEDisconnectDeviceNotification: Swift.String
+public let MLVisonBLEBindDeviceNotification: Swift.String
+public let MLVisonBLEBindFailDeviceNotification: Swift.String
+public let MLVisonBLEUnbindDeviceNotification: Swift.String
+public let MLVisonBLEDiscoverTimeoutNotification: Swift.String
+@objc @_inheritsConvenienceInitializers public class MLVisionM6OCSDK : ObjectiveC.NSObject {
+  public static let shared: MLVisionM6SDK.MLVisionM6OCSDK
+  #if compiler(>=5.3) && $NonescapableTypes
+  @objc public static func initSDK(amapKey: Swift.String?, delegate: ObjectiveC.NSObject)
+  #endif
+  @objc public static func setNavigationController(navigation: UIKit.UINavigationController)
+  @objc public static func initAliAcount(apiKey: Swift.String, appID: Swift.String, spaceID: Swift.String)
+  @objc public static func startScan()
+  @objc public static func stopScan()
+  @objc public static func startConnect()
+  @objc public static func cancelConnect()
+  @objc public static func unbound()
+  @objc public static func pushToFunction(type: ObjectiveC.NSInteger)
+  #if compiler(>=5.3) && $NonescapableTypes
+  @objc public static func getGlassInfo() -> Swift.Dictionary<Swift.String, Any>?
+  #endif
+  @objc public static func setAppLanguage(languageType: MLVisionM6SDK.MLSDKLanguageType)
+  @objc public static func setGlassLanguage(language: Swift.Int)
+  @objc public static func setGlassScreenLight(screenLight: Swift.Int)
+  @objc public static func setGlassVolume(volume: Swift.Int)
+  @objc public static func setGlassScreenTime(screenTime: Swift.Int)
+  @objc public static func setShowLog(_ show: Swift.Bool)
+  @objc public static func sendBleMessage(type: ObjectiveC.NSInteger, message: Foundation.NSDictionary)
+  @objc public static func setMessageBlock(block: @escaping MLVisionM6SDK.MLBLEMessageBlock)
+  @objc public static func setAudioMessageBlock(block: @escaping MLVisionM6SDK.MLBLEAudioMessageBlock)
+  @objc public static func otaUpdate(url: Foundation.URL, block: @escaping MLVisionM6SDK.MLBLEOtaBlock)
+  @objc public static func setglassFileUpdateBlock(block: @escaping MLVisionM6SDK.MLBLEGlassFileUpdateBlock)
+  @objc public static func setGlassRecordingStatus(appId: ObjectiveC.NSInteger, isStart: Swift.Bool)
+  @objc public static func sendExitApplicationMessage(appId: ObjectiveC.NSInteger)
+  @objc public static func handleIflyRecognizeData(result: [Any], isLast: Swift.Bool)
+  @objc public static func handleIflyData(info: Swift.String, eventData: [Swift.AnyHashable : Any])
+  @objc public static func handleIflyEvnt(event: Swift.Int)
+  @objc public static func handleIflyTTSEvnt(event: Swift.Int)
+  @objc public static func showErrorLog(msg: Swift.String)
+  @objc public static func requestWaitSendFile()
+  @objc public static func sendTransferFile(fileArray: Swift.Array<Swift.String>)
+  @objc public static func sendFileArrayDownloadConfirm(fileArray: Swift.Array<Swift.String>)
+  @objc public static func sendFileArrayDownloadConfirm(file: Swift.String)
+  @objc public static func sendFileArrayDelete(fileArray: Swift.Array<Swift.String>)
+  @objc public static func deleteLocalFile(fileArray: Swift.Array<Swift.String>)
+  @objc public static func fileTransferBlock(block: @escaping MLVisionM6SDK.MLFileTransferBlock)
+  @objc public static func setGlassWifi(isOpen: Swift.Bool)
+  @objc public static func getWifiEnable() -> Swift.Bool
+  @objc public static func startScanWifi()
+  @objc public static func connectToWifi(ssid: Swift.String, bssid: Swift.String, password: Swift.String)
+  #if compiler(>=5.3) && $NonescapableTypes
+  @objc public static func getWifiConnectInfo() -> Swift.Dictionary<Swift.String, Any>?
+  #endif
+  @objc public static func getBleWifiChangedBlock(block: @escaping MLVisionM6SDK.MLBleWifiChangedBlock)
+  @objc public static func getBleWifiConnectResultBlock(block: @escaping MLVisionM6SDK.MLBleWifiConnectResultBlock)
+  @objc public static func startAssistant(type: MLVisionM6SDK.MLVisionWakeupType, tts: Swift.String, modelId: Swift.String)
+  @objc public static func registDomain(domainArray: Swift.Array<Swift.String>)
+  @objc public static func stopAssistant()
+  @objc public static func playTTSForAssistant(modelId: Swift.String, text: Swift.String, action: MLVisionM6SDK.MLVisionTTSNextAction)
+  @objc public static func stopTTSForAssistant()
+  @objc public static func switchAsrIntercept()
+  @objc public static func switchWgAssistant()
+  @objc public static func onEngineStateBlock(block: @escaping MLVisionM6SDK.MLAssistantEngineSteteBlock)
+  @objc public static func assistantReslutBlock(block: @escaping MLVisionM6SDK.MLAssistantResultBlock)
+  @objc public static func notifyFlavor(flavor: Swift.String)
+  @objc public static func openApp(app: ObjectiveC.NSInteger, ext: Any)
+  @objc public static func exitApp(app: ObjectiveC.NSInteger, ext: Any)
+  @objc public static func startSimulInterpreting()
+  @objc public static func stopSimulInterpreting(isEndAndSave: Swift.Bool)
+  @objc public static func isSimulInterpreting() -> Swift.Bool
+  @objc public static func releaseMemory()
+  @objc public static func getSourceLanguage() -> Swift.String
+  @objc public static func getTargetLanguage() -> Swift.String
+  @objc public static func setSourceLanguage(language: Swift.String)
+  @objc public static func setTargetLanguage(language: Swift.String)
+  @objc public static func getSupportedSourceLanguages() -> [Swift.String]
+  @objc public static func getSupportedTargetLanguages() -> [Swift.String]
+  @objc public static func swapLanguages()
+  @objc public static func muteTts(mute: Swift.Bool)
+  @objc public static func setSimulInterpretingResultBlock(block: @escaping MLVisionM6SDK.MLSimulInterpretingResultBlock)
+  @objc public static func setSimulInterpretingAudioPathBlock(block: @escaping MLVisionM6SDK.MLSimulInterpretingAudioPathBlock)
+  @objc public static func startOtaUpdateFilePath(filePath: Swift.String, fileName: Swift.String, fileSize: Swift.Int)
+  @objc public static func otaProgressUpdateBlock(block: @escaping MLVisionM6SDK.MLOtaProgressUpdateBlock)
+  @objc public static func otaOnSuccessBlock(block: @escaping MLVisionM6SDK.MLOtaOnSuccessBlock)
+  @objc public static func otataOnErrorBlock(block: @escaping MLVisionM6SDK.MLOtaOnErrorBlock)
+  @objc public static func startTranscribe(filePath: Swift.String)
+  @objc public static func setTranscribeChangedBlock(block: @escaping MLVisionM6SDK.MLTranscribeBlockWithFile)
+  @objc public static func setTranscribeSuccessBlock(block: @escaping MLVisionM6SDK.MLTranscribeBlockWithFile)
+  @objc public static func setTranscribeProgressBlock(block: @escaping MLVisionM6SDK.MLTranscribeProgressBlockWithFile)
+  @objc override dynamic public init()
+  @objc deinit
+}
+extension MLVisionM6SDK.MLVisionM6OCSDK {
+  @objc public static func setAudioRecordCompleteBlock(block: @escaping MLVisionM6SDK.MLAudioRecordCompleteBlock)
+  @objc public static func setAudioSummaryCompleteBlock(block: @escaping MLVisionM6SDK.MLAudioRecordSummaryCompleteBlock)
+  @objc public static func setAudioRecognizingBlock(block: @escaping MLVisionM6SDK.MLAudioRecordRecognizingBlock)
+  @objc public static func loadAudioSummaryRecordsBlock(block: @escaping MLVisionM6SDK.MLAudioSummaryRecordsBlock)
+  @objc public static func setAudioSummaryFileBlock(block: @escaping MLVisionM6SDK.MLAudioSummaryFileBlock)
+  @objc public static func startRecording()
+  @objc public static func stopRecording()
+  @objc public static func cancelRecording()
+  @objc public static func deleteAudioRecord(uuid: Swift.String) -> Swift.Bool
+  @objc public static func deleteAllAudioRecords() -> Swift.Bool
+}
+@objc @_inheritsConvenienceInitializers public class OpusKit : ObjectiveC.NSObject {
+  public static let shared: MLVisionM6SDK.OpusKit
+  public func initialize(sampleRate: MLVisionM6SDK.opus_int32 = 8000, numberOfChannels: Swift.Int32 = 1, packetSize: MLVisionM6SDK.opus_int32 = 320, encodeBlockSize: MLVisionM6SDK.opus_int32 = 160)
+  #if compiler(>=5.3) && $NonescapableTypes
+  public func decodeData(_ data: Foundation.Data) -> Foundation.Data?
+  #endif
+  @objc override dynamic public init()
+  @objc deinit
+}
+extension Swift.String {
+  public func matchRegex(_ rule: Swift.String) -> Swift.Bool
+  public var isMobile: Swift.Bool {
+    get
+  }
+  public var isValidSmsVerifyCode: Swift.Bool {
+    get
+  }
+  public var isValidAccountPassword: Swift.Bool {
+    get
+  }
+  public var isValidNickName: Swift.Bool {
+    get
+  }
+}
+extension Swift.String {
+  public var secureMobile: Swift.String {
+    get
+  }
+  public var asSecureName: Swift.String {
+    get
+  }
+}

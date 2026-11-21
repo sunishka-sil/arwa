@@ -1,0 +1,6 @@
+framework module AliVCSDK_ARTC {
+  umbrella header "AliVCSDK_ARTC.h"
+
+  export *
+  module * { export * }
+}

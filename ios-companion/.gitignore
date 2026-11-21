@@ -1,0 +1,9 @@
+.DS_Store
+.derived-data/
+build/
+**/xcuserdata/
+Pods/
+MLDemo/MLVisionM6SDK/iflyaiui/aiui/cfg/aiui.cfg
+/Untitled.zip
+MLDemo/MLVisionM6SDK/MLVisionM6SDK.framework/MLVisionM6SDK
+MLDemo/MLVisionM6SDK/**/*.abi.json

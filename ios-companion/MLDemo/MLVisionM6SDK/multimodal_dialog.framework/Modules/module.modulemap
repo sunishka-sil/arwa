@@ -1,0 +1,6 @@
+framework module multimodal_dialog {
+  umbrella header "multimodal_dialog.h"
+  export *
+
+  module * { export * }
+}

@@ -1,5 +1,49 @@
 # ARWA glasses app (Android, for the MicroLumin M6)
 
+## Phone companion build
+
+The default screen now runs locally and advertises an ARWA name for the Swift companion in `../ios-companion`.
+The existing motor-coupling guide and Three.js are bundled into the APK; the laptop is not needed for guide playback.
+Debug builds install as **ARWA Companion** (`com.arwa.glasses.companion`), alongside the original app.
+
+Prepare the offline speech model from the arwa folder with `python3 scripts/prepare-voice-model.py` (verified download, about 40 MB).
+Build with JDK 17, Android SDK 34, and `./gradlew assembleDebug`. Then install `app/build/outputs/apk/debug/app-debug.apk`
+and open **ARWA Companion** on the glasses. In the iPhone app, connect through the existing Bluetooth flow, select the
+ARWA name shown on your glasses in Set Up Guides, and start the motor-coupling guide. Both devices need the same reachable Wi-Fi.
+
+To open the companion from ADB when you are ready to change the display:
+`adb shell am start -n com.arwa.glasses.companion/com.arwa.glasses.MainActivity`
+
+To return to its setup/name screen, press Android Back, or launch a fresh instance with `--ez setup true`.
+Guide progress is saved on the glasses. HTTP APIs live at `/api/companion/status` and `/api/companion/command` on port 8080.
+No phone connection code is required. The initial prototype trusts the local Wi-Fi network.
+
+### Voice navigation
+
+The glasses' own microphone now supports **next**, **back**, **show**, and **hide**, using the offline Vosk recognizer
+adapted from `origin/voice-commands` commit `f54cb11`. It updates the same local guide state as the touchpad and phone.
+The phone continues to follow progress; no laptop or phone microphone is needed.
+
+Voice is enabled by default when a guide is open. Accept the microphone permission prompt on first use. The footer
+shows whether the model is loading, listening, paused, or off. The updated iPhone current-guide screen has a voice
+on/off control and shows the last voice command. Existing phone builds can still navigate the updated glasses.
+
+Recognition stops and releases the microphone when the app goes into the background or returns to the setup screen.
+It also pauses around Android text-to-speech so spoken output does not navigate the guide. Touchpad/phone controls
+remain available. Partial and final hypotheses are deduplicated, and corrections at an already-fired position do not
+execute a second command.
+
+The English model is bundled in the APK and is copied to app storage on first use. Its download is ignored by git;
+`scripts/prepare-voice-model.py` checks SHA-256 and supplies the required `uuid`. The build fails with setup instructions
+if model files are missing. This integration adds navigation commands; the separate `voice-over` branch's narration
+and playback controls are not included.
+
+The older laptop workflow below uses the original release package name, `com.arwa.glasses`.
+For a debug companion build, replace that package with `com.arwa.glasses.companion` and use the full activity class
+`com.arwa.glasses.MainActivity` in launch commands. An explicit `--es url` still opens laptop-hosted pages.
+
+## Original laptop workflow
+
 A small plain-Android app for the glasses: a full-screen WebView on the ARWA server's `glasses.html`
 (black background = see-through), touchpad/ring keys mapped to confirm / call expert, and a
 `window.ARWAGlasses` bridge for the glasses' camera (panel check), speaker (spoken alerts) and mic (voice).

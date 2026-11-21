@@ -1,0 +1,52 @@
+{
+    "login":{
+        "appid":"9f52382f",
+        "key":"4bb4870aadb014f70fddbce652d7a4fa",
+        "api_secret":"YOUR_AIUI_SECRET"
+    },
+    "interact":{
+        "interact_timeout":"-1",
+        "result_timeout":"5000"
+    },
+    "global":{
+        "scene":"namibox",
+        "aiui_ver": "1"
+    },
+    "userparams":{
+        "k1":"v1",
+        "k2":"v2"
+    },
+    "tts":{
+        "play_mode":"sdk"
+    },
+    "vad":{
+        "vad_enable":"1",
+        "vad_bos":"8000",
+        "vad_eos": "1000",
+        "threshold":"0.7",
+        "speech_timeout":"8000"
+    },
+    "ivw": {
+        "res_type": "assets",
+        "res_path": "res_317.bin"
+    },
+    "iat":{
+        "sample_rate":"16000"
+    },
+    "speech":{
+        "data_source":"sdk",
+        "wakeup_mode":"off",
+        "intent_engine_type":"cloud",
+        "interact_mode":"continuous"
+    },
+    "log":{
+        "debug_log":"1",
+        "save_datalog":"1",
+        "datalog_size":1024
+    },
+    "recorder":{
+         "channel_count": 1,
+         "channel_filter": "0,-1"
+     },
+}
+

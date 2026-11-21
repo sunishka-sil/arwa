@@ -10,10 +10,8 @@ import android.hardware.Camera;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.speech.RecognitionListener;
-import android.speech.RecognizerIntent;
-import android.speech.SpeechRecognizer;
 import android.speech.tts.TextToSpeech;
+import android.speech.tts.UtteranceProgressListener;
 import android.util.Base64;
 import android.util.Log;
 import android.view.InputDevice;
@@ -35,44 +33,57 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.ArrayList;
 import java.util.Locale;
 
 /**
- * ARWA on the M6: a full-screen WebView showing the server's glasses view (markers in, actions out).
+ * ARWA on the M6: a local bundled guide viewer with direct phone controls over Wi-Fi.
  * Plain Android (API 28 on the glasses), no MicroLumin SDK needed. 640x480, black = see-through.
  *
- * Default URL works over the USB cable after:  adb reverse tcp:8080 tcp:8080
- * Over Wi-Fi:  adb shell am start -n com.arwa.glasses/.MainActivity --es url "http://<laptop-ip>:8080/glasses.html?name=glasses&scale=1.2"
+ * Default URL is served inside the glasses. Explicit URL extras retain the original laptop demo.
  * Debug:       adb logcat -s ARWA   (keys, page console, camera, voice)
  */
 public class MainActivity extends Activity {
     private static final String TAG = "ARWA";
-    private static final String DEFAULT_URL = "http://localhost:8080/glasses.html?name=glasses&scale=1.2";
+    private static final String LOCAL_BASE = "http://127.0.0.1:8080";
+    private GuideServer guideServer;
     private WebView web;
     private String base;          // e.g. http://localhost:8080, used for the camera POST
     private TextToSpeech tts;
     private boolean ttsReady = false;
-    private SpeechRecognizer recognizer;
-    private boolean voiceOn = false;
+    private VoiceCommands voice;
+    private boolean askingForMicrophone;
+    private boolean speaking;
+    private boolean destroyed;
+    private int speechGeneration;
+    private static final int VOICE_PERMISSION = 3;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
-        // Android 9 asks for camera + mic at runtime. Accept once on the glasses (touchpad tap).
-        if (Build.VERSION.SDK_INT >= 23 && (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED
-                || checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED)) {
-            requestPermissions(new String[]{Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO}, 1);
-        }
-        // Or skip the prompt from the laptop:  adb shell pm grant com.arwa.glasses android.permission.CAMERA  (and RECORD_AUDIO)
+        // The microphone is requested only once a guide is open and voice navigation is enabled.
 
         // Native speech out. WebView has no speechSynthesis, so the page calls ARWAGlasses.say(text).
         tts = new TextToSpeech(this, status -> {
             ttsReady = status == TextToSpeech.SUCCESS;
             if (ttsReady) tts.setLanguage(Locale.US);
             Log.i(TAG, "TTS " + (ttsReady ? "ready" : "unavailable (no engine on glasses?), tones only"));
+        });
+        tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
+            @Override public void onStart(String id) {
+                runOnUiThread(() -> { speechGeneration++; speaking = true; updateVoiceListening(); });
+            }
+            @Override public void onDone(String id) { doneSpeaking(); }
+            @Override public void onError(String id) { doneSpeaking(); }
+            private void doneSpeaking() {
+                runOnUiThread(() -> {
+                    int generation = speechGeneration;
+                    web.postDelayed(() -> {
+                        if (generation == speechGeneration) { speaking = false; updateVoiceListening(); }
+                    }, 500);
+                });
+            }
         });
 
         web = new WebView(this);
@@ -82,7 +93,16 @@ public class MainActivity extends Activity {
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
         s.setMediaPlaybackRequiresUserGesture(false); // tones without a tap
-        web.setWebViewClient(new WebViewClient());
+        web.setWebViewClient(new WebViewClient() {
+            @Override public void onPageStarted(WebView view, String url, android.graphics.Bitmap icon) {
+                if (guideServer != null) guideServer.viewerClosed();
+                updateVoiceListening();
+            }
+            @Override public void onPageFinished(WebView view, String url) {
+                if (guideServer != null) guideServer.setViewerEnabled(url.startsWith(LOCAL_BASE + "/workflow3d.html"));
+                updateVoiceListening();
+            }
+        });
         web.setWebChromeClient(new WebChromeClient() {
             @Override public void onPermissionRequest(PermissionRequest request) { request.grant(request.getResources()); }
             // Page errors show in logcat. Old WebViews fail on new JS syntax, so check here first if the screen stays on "Connecting…".
@@ -94,13 +114,54 @@ public class MainActivity extends Activity {
         web.addJavascriptInterface(new Bridge(), "ARWAGlasses");
         setContentView(web);
 
+        guideServer = new GuideServer(this, () -> runOnUiThread(this::openLocalGuide),
+                () -> runOnUiThread(this::updateVoiceListening));
+        voice = new VoiceCommands(this, new VoiceCommands.Listener() {
+            @Override public void onStatus(String status) {
+                guideServer.setVoiceStatus(status);
+                Log.i(TAG, "Voice status: " + status);
+            }
+            @Override public void onCommand(String command) { guideServer.voiceCommand(command); }
+        });
+        try {
+            guideServer.start();
+        } catch (Exception ex) {
+            Log.e(TAG, "Could not start companion connection", ex);
+            web.loadData("<body style='background:black;color:white'>ARWA could not start its phone connection. Close and reopen the app.</body>", "text/html", "UTF-8");
+            return;
+        }
         Intent i = getIntent();
         swap = i != null && i.getBooleanExtra("swap", false);
-        String url = i != null && i.getStringExtra("url") != null ? i.getStringExtra("url") : DEFAULT_URL;
+        String url = i != null && i.getStringExtra("url") != null ? i.getStringExtra("url")
+                : LOCAL_BASE + (guideServer.isStarted() && (i == null || !i.getBooleanExtra("setup", false)) ? "/workflow3d.html?local=1" : "/setup");
         Uri u = Uri.parse(url);
         base = u.getScheme() + "://" + u.getAuthority();
         Log.i(TAG, "Loading " + url + " · WebView " + web.getSettings().getUserAgentString());
         web.loadUrl(url);
+    }
+
+    private void openLocalGuide() {
+        base = LOCAL_BASE;
+        web.loadUrl(LOCAL_BASE + "/workflow3d.html?local=1");
+    }
+
+    @Override protected void onResume() {
+        super.onResume();
+        if (guideServer != null) guideServer.setForeground(true);
+        updateVoiceListening();
+    }
+
+    @Override protected void onPause() {
+        if (guideServer != null) guideServer.setForeground(false);
+        updateVoiceListening();
+        super.onPause();
+    }
+
+    @Override public void onBackPressed() {
+        // Return to the address screen without terminating a running guide.
+        if (guideServer != null) guideServer.viewerClosed();
+        base = LOCAL_BASE;
+        web.loadUrl(LOCAL_BASE + "/setup");
     }
 
     // ---- Side touchpad + ring -> the same four commands as phone voice ----
@@ -188,6 +249,11 @@ public class MainActivity extends Activity {
     // ---- Camera: one still from the glasses camera -> POST /api/vision/panel -> server pushes the verdict marker ----
     // Plain android.hardware.Camera (works on API 28, no SDK). If the launcher holds the camera, open() throws: see logcat.
     private void snap(String recipe) {
+        if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            runOnUiThread(() -> requestPermissions(new String[]{Manifest.permission.CAMERA}, 1));
+            toast("Allow camera access, then try again");
+            return;
+        }
         toast("Reading panel…");
         new Thread(() -> {
             Camera cam = null;
@@ -235,43 +301,39 @@ public class MainActivity extends Activity {
         return h.getResponseCode() + " " + (sc.hasNext() ? sc.next() : "");
     }
 
-    // ---- Voice in: Android SpeechRecognizer if the glasses have a recognition service (they may not) ----
-    private void startListening() {
-        if (!SpeechRecognizer.isRecognitionAvailable(this)) { Log.i(TAG, "no speech recognizer on this device; use ring/touchpad"); return; }
-        voiceOn = true;
-        if (recognizer == null) {
-            recognizer = SpeechRecognizer.createSpeechRecognizer(this);
-            recognizer.setRecognitionListener(new RecognitionListener() {
-                @Override public void onResults(Bundle r) {
-                    ArrayList<String> l = r.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
-                    if (l != null && !l.isEmpty()) { Log.i(TAG, "heard: " + l.get(0)); js("window.arwaVoice && arwaVoice(" + JSONObject.quote(l.get(0)) + ")"); }
-                    relisten();
-                }
-                @Override public void onError(int err) { Log.i(TAG, "voice error " + err); relisten(); }
-                @Override public void onReadyForSpeech(Bundle b) {}
-                @Override public void onBeginningOfSpeech() {}
-                @Override public void onRmsChanged(float v) {}
-                @Override public void onBufferReceived(byte[] b) {}
-                @Override public void onEndOfSpeech() {}
-                @Override public void onPartialResults(Bundle b) {}
-                @Override public void onEvent(int t, Bundle b) {}
-            });
+    // ---- Offline voice navigation, adapted from the voice-commands branch ----
+    private void updateVoiceListening() {
+        if (destroyed || voice == null || guideServer == null) return;
+        if (!guideServer.canListen() || speaking) {
+            voice.stop(!guideServer.isVoiceEnabled() ? "Off" : speaking ? "Paused while speaking" : "Paused");
+            return;
         }
-        relisten();
+        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            guideServer.setVoiceStatus("Microphone permission needed");
+            if (!askingForMicrophone) {
+                askingForMicrophone = true;
+                requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, VOICE_PERMISSION);
+            }
+            return;
+        }
+        voice.start();
     }
-    private void relisten() {
-        if (!voiceOn) return;
-        web.postDelayed(() -> {
-            Intent it = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
-            it.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
-            it.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-US");
-            recognizer.startListening(it);
-        }, 300);
+
+    @Override public void onRequestPermissionsResult(int code, String[] permissions, int[] results) {
+        super.onRequestPermissionsResult(code, permissions, results);
+        if (code != VOICE_PERMISSION) return;
+        askingForMicrophone = false;
+        if (results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED) updateVoiceListening();
+        else if (guideServer != null) {
+            guideServer.setVoiceEnabled(false);
+            guideServer.setVoiceStatus("Microphone permission denied");
+        }
     }
 
     @Override protected void onDestroy() {
-        voiceOn = false;
-        if (recognizer != null) recognizer.destroy();
+        if (guideServer != null) guideServer.close();
+        destroyed = true;
+        if (voice != null) voice.close();
         if (tts != null) tts.shutdown();
         super.onDestroy();
     }
@@ -284,6 +346,6 @@ public class MainActivity extends Activity {
             if (ttsReady) tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, "arwa");
         }
         @JavascriptInterface public void snapPanel(String recipe) { snap(recipe == null || recipe.isEmpty() ? "B" : recipe); }
-        @JavascriptInterface public void startVoice() { runOnUiThread(MainActivity.this::startListening); }
+        @JavascriptInterface public void startVoice() { runOnUiThread(() -> guideServer.setVoiceEnabled(true)); }
     }
 }

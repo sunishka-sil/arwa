@@ -1,0 +1,257 @@
+PODS:
+  - AEXML_DocX (4.6.3)
+  - Alamofire (5.10.2)
+  - AMapFoundation (1.8.2)
+  - AMapNavi (10.0.900):
+    - AMapFoundation (>= 1.8.2)
+  - AMapSearch (9.7.4):
+    - AMapFoundation (>= 1.8.0)
+  - BTBubble (0.0.5)
+  - CocoaAsyncSocket (7.6.5)
+  - CocoaLumberjack/Core (3.8.5)
+  - CocoaLumberjack/Swift (3.8.5):
+    - CocoaLumberjack/Core
+  - CryptoSwift (1.8.4)
+  - DocX-Swift (0.8.8):
+    - AEXML_DocX (~> 4.6.3)
+    - ZIPFoundation (~> 0.9.16)
+  - EmptyDataSet-Swift (5.0.0)
+  - FMDB (2.7.12):
+    - FMDB/standard (= 2.7.12)
+  - FMDB/Core (2.7.12)
+  - FMDB/standard (2.7.12):
+    - FMDB/Core
+  - ImageViewer.swift (3.3.8)
+  - IQKeyboardCore (1.0.5)
+  - IQKeyboardManagerSwift (8.0.1):
+    - IQKeyboardManagerSwift/Appearance (= 8.0.1)
+    - IQKeyboardManagerSwift/Core (= 8.0.1)
+    - IQKeyboardManagerSwift/IQKeyboardReturnManager (= 8.0.1)
+    - IQKeyboardManagerSwift/IQKeyboardToolbarManager (= 8.0.1)
+    - IQKeyboardManagerSwift/IQTextView (= 8.0.1)
+    - IQKeyboardManagerSwift/Resign (= 8.0.1)
+  - IQKeyboardManagerSwift/Appearance (8.0.1):
+    - IQKeyboardManagerSwift/Core
+  - IQKeyboardManagerSwift/Core (8.0.1):
+    - IQKeyboardNotification
+    - IQTextInputViewNotification
+  - IQKeyboardManagerSwift/IQKeyboardReturnManager (8.0.1):
+    - IQKeyboardReturnManager
+  - IQKeyboardManagerSwift/IQKeyboardToolbarManager (8.0.1):
+    - IQKeyboardManagerSwift/Core
+    - IQKeyboardToolbarManager
+  - IQKeyboardManagerSwift/IQTextView (8.0.1):
+    - IQTextView
+  - IQKeyboardManagerSwift/Resign (8.0.1):
+    - IQKeyboardManagerSwift/Core
+  - IQKeyboardNotification (1.0.3)
+  - IQKeyboardReturnManager (1.0.4):
+    - IQKeyboardCore (= 1.0.5)
+  - IQKeyboardToolbar (1.1.1):
+    - IQKeyboardCore
+    - IQKeyboardToolbar/Core (= 1.1.1)
+  - IQKeyboardToolbar/Core (1.1.1):
+    - IQKeyboardCore
+    - IQKeyboardToolbar/Placeholderable
+  - IQKeyboardToolbar/Placeholderable (1.1.1):
+    - IQKeyboardCore
+  - IQKeyboardToolbarManager (1.1.3):
+    - IQKeyboardToolbar
+    - IQTextInputViewNotification
+  - IQTextInputViewNotification (1.0.8):
+    - IQKeyboardCore
+  - IQTextView (1.0.5):
+    - IQKeyboardToolbar/Placeholderable
+  - JXBanner (0.3.6):
+    - JXBanner/Banner (= 0.3.6)
+    - JXBanner/PageControl (= 0.3.6)
+  - JXBanner/Banner (0.3.6):
+    - JXBanner/Banner/API (= 0.3.6)
+    - JXBanner/Banner/Banner (= 0.3.6)
+    - JXBanner/Banner/Cell (= 0.3.6)
+    - JXBanner/Banner/Common (= 0.3.6)
+    - JXBanner/Banner/Transform (= 0.3.6)
+  - JXBanner/Banner/API (0.3.6):
+    - JXBanner/Banner/Cell
+    - JXBanner/PageControl
+  - JXBanner/Banner/Banner (0.3.6):
+    - JXBanner/Banner/API
+    - JXBanner/Banner/Common
+    - JXBanner/Banner/Transform
+  - JXBanner/Banner/Cell (0.3.6)
+  - JXBanner/Banner/Common (0.3.6)
+  - JXBanner/Banner/Transform (0.3.6):
+    - JXBanner/Banner/API
+  - JXBanner/PageControl (0.3.6):
+    - JXPageControl
+  - JXCategoryView (1.6.8)
+  - JXPageControl (0.1.5):
+    - JXPageControl/Common (= 0.1.5)
+    - JXPageControl/Jump (= 0.1.5)
+    - JXPageControl/Transform (= 0.1.5)
+  - JXPageControl/Common (0.1.5)
+  - JXPageControl/Jump (0.1.5):
+    - JXPageControl/Common
+  - JXPageControl/Transform (0.1.5):
+    - JXPageControl/Common
+  - KakaJSON (1.1.2)
+  - Kingfisher (8.3.2)
+  - lottie-ios (4.5.1)
+  - LSTPopView (0.3.10):
+    - LSTPopView/Code (= 0.3.10)
+    - LSTTimer
+  - LSTPopView/Code (0.3.10):
+    - LSTTimer
+  - LSTTimer (0.2.10)
+  - MarkdownKit (1.7.1)
+  - MBProgressHUD (1.2.0)
+  - MicrosoftCognitiveServicesSpeech-iOS (1.44.0)
+  - MJRefresh (3.7.9)
+  - Moya (15.0.0):
+    - Moya/Core (= 15.0.0)
+  - Moya/Core (15.0.0):
+    - Alamofire (~> 5.0)
+  - ObjcExceptionBridging (7.1.5):
+    - ObjcExceptionBridging/ObjcExceptionBridging (= 7.1.5)
+  - ObjcExceptionBridging/ObjcExceptionBridging (7.1.5)
+  - SnapKit (5.7.1)
+  - SSZipArchive (2.4.3)
+  - Starscream (4.0.8)
+  - TTTAttributedLabel (2.0.0)
+  - XCGLogger (7.1.5):
+    - XCGLogger/Core (= 7.1.5)
+  - XCGLogger/Core (7.1.5):
+    - ObjcExceptionBridging
+  - YYKit (1.0.9):
+    - YYKit/no-arc (= 1.0.9)
+  - YYKit/no-arc (1.0.9)
+  - ZIPFoundation (0.9.19)
+  - ZLPhotoBrowser (4.6.0.1):
+    - ZLPhotoBrowser/Core (= 4.6.0.1)
+  - ZLPhotoBrowser/Core (4.6.0.1)
+
+DEPENDENCIES:
+  - AMapNavi (~> 10.0.900)
+  - AMapSearch
+  - BTBubble
+  - CocoaAsyncSocket
+  - CocoaLumberjack/Swift (~> 3.8.5)
+  - CryptoSwift
+  - DocX-Swift
+  - EmptyDataSet-Swift
+  - FMDB (~> 2.7.12)
+  - ImageViewer.swift
+  - IQKeyboardManagerSwift (~> 8.0.0)
+  - JXBanner
+  - JXCategoryView
+  - KakaJSON
+  - Kingfisher (~> 8.0)
+  - lottie-ios
+  - LSTPopView
+  - MarkdownKit
+  - MBProgressHUD
+  - MicrosoftCognitiveServicesSpeech-iOS (~> 1.31)
+  - MJRefresh
+  - Moya
+  - SnapKit
+  - SSZipArchive
+  - Starscream (~> 4.0.6)
+  - TTTAttributedLabel
+  - XCGLogger (~> 7.1.5)
+  - YYKit
+  - ZLPhotoBrowser
+
+SPEC REPOS:
+  trunk:
+    - AEXML_DocX
+    - Alamofire
+    - AMapFoundation
+    - AMapNavi
+    - AMapSearch
+    - BTBubble
+    - CocoaAsyncSocket
+    - CocoaLumberjack
+    - CryptoSwift
+    - DocX-Swift
+    - EmptyDataSet-Swift
+    - FMDB
+    - ImageViewer.swift
+    - IQKeyboardCore
+    - IQKeyboardManagerSwift
+    - IQKeyboardNotification
+    - IQKeyboardReturnManager
+    - IQKeyboardToolbar
+    - IQKeyboardToolbarManager
+    - IQTextInputViewNotification
+    - IQTextView
+    - JXBanner
+    - JXCategoryView
+    - JXPageControl
+    - KakaJSON
+    - Kingfisher
+    - lottie-ios
+    - LSTPopView
+    - LSTTimer
+    - MarkdownKit
+    - MBProgressHUD
+    - MicrosoftCognitiveServicesSpeech-iOS
+    - MJRefresh
+    - Moya
+    - ObjcExceptionBridging
+    - SnapKit
+    - SSZipArchive
+    - Starscream
+    - TTTAttributedLabel
+    - XCGLogger
+    - YYKit
+    - ZIPFoundation
+    - ZLPhotoBrowser
+
+SPEC CHECKSUMS:
+  AEXML_DocX: 52b92132940c23e41f81471dc01139e6ea6a17ec
+  Alamofire: 7193b3b92c74a07f85569e1a6c4f4237291e7496
+  AMapFoundation: 9885c48fc3a78fdfb84a0299a2293e56ea3c9fec
+  AMapNavi: fceb4715f9a3b5a25f330facebee2aa2bdba42dd
+  AMapSearch: a30e89212f55a867ac951ce71f800313cd54ad0a
+  BTBubble: c2a296a15665a742fb547f70414ee5b5252863e3
+  CocoaAsyncSocket: 065fd1e645c7abab64f7a6a2007a48038fdc6a99
+  CocoaLumberjack: 6a459bc897d6d80bd1b8c78482ec7ad05dffc3f0
+  CryptoSwift: e64e11850ede528a02a0f3e768cec8e9d92ecb90
+  DocX-Swift: baf72b73d6bfff3683bfa23313079967aee03b05
+  EmptyDataSet-Swift: eb382c0c87a2d9c678077385a595cec52da38171
+  FMDB: 728731dd336af3936ce00f91d9d8495f5718a0e6
+  ImageViewer.swift: 284cd8127d31af8e5938674fb9f8e695a4cdf6c6
+  IQKeyboardCore: 28c8bf3bcd8ba5aa1570b318cbc4da94b861711e
+  IQKeyboardManagerSwift: 835fc9c6e4732398113406d84900ad2e8f141218
+  IQKeyboardNotification: d7382c4466c5a5adef92c7452ebf861b36050088
+  IQKeyboardReturnManager: 972be48528ce9e7508ab3ab15ac7efac803f17f5
+  IQKeyboardToolbar: d4bdccfb78324aec2f3920659c77bb89acd33312
+  IQKeyboardToolbarManager: 6c693c8478d6327a7ef2107528d29698b3514dbb
+  IQTextInputViewNotification: f5e954d8881fd9808b744e49e024cc0d4bcfe572
+  IQTextView: ae13b4922f22e6f027f62c557d9f4f236b19d5c7
+  JXBanner: 348dbef856e786494cbf30fb45d6b84826f2d3c5
+  JXCategoryView: 262d503acea0b1278c79a1c25b7332ffaef4d518
+  JXPageControl: e9487b39e2e58fc17790833214f3b8e935bef98b
+  KakaJSON: cc5ff50a8c1cfbb09413db8496cb709a209e6137
+  Kingfisher: 0621d0ac0c78fecb19f6dc5303bde2b52abaf2f5
+  lottie-ios: 248b380fa1b97d18e792c37d90da7ab2aa0d6562
+  LSTPopView: 9379f00f6ce7d1fc620b50ab00ed3ef97b2d4d52
+  LSTTimer: caf8f02ff366ca175cf4c1778d26c166183c1b6f
+  MarkdownKit: 0b15195c63cf3e39387949c4bdeccde0055e252a
+  MBProgressHUD: 3ee5efcc380f6a79a7cc9b363dd669c5e1ae7406
+  MicrosoftCognitiveServicesSpeech-iOS: 6e39e00447337facb47f418c9c21dd46b4d8c4d0
+  MJRefresh: ff9e531227924c84ce459338414550a05d2aea78
+  Moya: 138f0573e53411fb3dc17016add0b748dfbd78ee
+  ObjcExceptionBridging: d3d37d62981bb7f252ecb31b62d7e23a96bbfb8a
+  SnapKit: d612e99e678a2d3b95bf60b0705ed0a35c03484a
+  SSZipArchive: fe6a26b2a54d5a0890f2567b5cc6de5caa600aef
+  Starscream: 19b5533ddb925208db698f0ac508a100b884a1b9
+  TTTAttributedLabel: 8cffe8e127e4e82ff3af1e5386d4cd0ad000b656
+  XCGLogger: 399c5885210b4e2ad79d9f7a29b105d672ef724f
+  YYKit: 7cda43304a8dc3696c449041e2cb3107b4e236e7
+  ZIPFoundation: b8c29ea7ae353b309bc810586181fd073cb3312c
+  ZLPhotoBrowser: 20f32e6429448cc1c008795a1b55472d5772939c
+
+PODFILE CHECKSUM: 0e0e4c41da9bdb70be00fffed9d54c9c649312da
+
+COCOAPODS: 1.16.2

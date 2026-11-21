@@ -1,5 +1,12 @@
 # ARWA starter (Worn hackathon, Nov 20–21 2026)
 
+## Phone companion demo
+
+The `demo` branch adds a Swift iPhone companion, a self-contained Android glasses guide, and offline voice navigation.
+Start with [the phone setup](ios-companion/README.md) and [the glasses setup](android-glasses/README.md).
+The complete iPhone app and MicroLumin SDK integration are in `ios-companion`. A fresh checkout needs the organizer-supplied main framework binary (excluded because it embeds credentials), plus the locked CocoaPods dependencies. See the phone setup instructions.
+The existing laptop-hosted demo below is still available.
+
 **Right asset, right step.** Live equipment state pinned to the physical asset, one thing at a time, on any device.
 Read-only and advisory: nothing here writes to equipment.
 

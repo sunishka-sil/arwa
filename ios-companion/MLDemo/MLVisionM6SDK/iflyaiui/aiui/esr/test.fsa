@@ -1,0 +1,12 @@
+#FSA 1.0;
+
+0	1	<action>
+1	2	<contact>
+0	3	<capture>
+0	4	<record>
+;
+
+<action>:我要|我想吃|我想点;
+<contact>:汉堡|摩卡咖啡|兰石咖啡|猫屎咖啡|一二咖啡;
+<capture>:我要拍照;
+<record>:我要录像;

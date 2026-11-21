@@ -2,7 +2,9 @@ node_modules/
 logs/
 .DS_Store
 android-glasses/.gradle/
+android-glasses/.cache/
 android-glasses/build/
 android-glasses/app/build/
 android-glasses/local.properties
+android-glasses/app/src/main/assets/model-en-us/
 .env

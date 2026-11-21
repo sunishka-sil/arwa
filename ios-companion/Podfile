@@ -1,0 +1,54 @@
+# Uncomment the next line to define a global platform for your project
+platform :ios, '15.0'
+
+target 'MLDemo' do
+  # Comment the next line if you don't want to use dynamic frameworks
+  use_frameworks!
+
+  
+  pod 'IQKeyboardManagerSwift', '~> 8.0.0'
+  pod 'Kingfisher', '~> 8.0'
+  pod 'XCGLogger', '~> 7.1.5'
+  pod 'CryptoSwift'
+  pod 'Moya'
+  pod 'LSTPopView'
+  pod 'MBProgressHUD'
+  pod 'SnapKit'
+  pod 'lottie-ios'
+  pod 'EmptyDataSet-Swift'
+  pod 'TTTAttributedLabel'
+  pod 'ZLPhotoBrowser'
+  pod 'FMDB', '~> 2.7.12'
+  pod 'Starscream', '~> 4.0.6'
+  pod 'JXCategoryView'
+  pod 'JXBanner'
+  pod 'BTBubble'
+  pod 'YYKit'
+  pod 'SSZipArchive'
+  pod 'MJRefresh'
+  pod 'DocX-Swift'
+  pod 'ImageViewer.swift'
+  pod 'AMapNavi', '~> 10.0.900'
+  pod 'AMapSearch'
+  pod 'KakaJSON'
+  pod 'MarkdownKit'
+  pod 'MicrosoftCognitiveServicesSpeech-iOS', '~> 1.31'
+  pod 'CocoaAsyncSocket'
+  pod 'CocoaLumberjack/Swift', '~> 3.8.5'
+
+
+end
+
+post_install do |installer|
+  installer.pods_project.targets.each do |target|
+ 
+    target.build_configurations.each do |config|
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
+      # YYKit (unmaintained) has chained comparisons that newer Xcode clang rejects; downgrade to a warning.
+      if target.name == 'YYKit'
+        config.build_settings['OTHER_CFLAGS'] = '$(inherited) -Wno-error=parentheses'
+      end
+
+    end
+  end
+end

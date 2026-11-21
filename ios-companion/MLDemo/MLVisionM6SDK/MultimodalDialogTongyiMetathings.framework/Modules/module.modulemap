@@ -1,0 +1,8 @@
+framework module "MultimodalDialogTongyiMetathings" {
+    umbrella header "MultimodalDialogTongyiMetathings.h"
+
+    export *
+    module * { export * }
+
+    use Foundation
+}

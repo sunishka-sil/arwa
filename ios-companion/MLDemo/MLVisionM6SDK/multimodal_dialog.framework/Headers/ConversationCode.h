@@ -1,0 +1,82 @@
+//
+//  ConversationCode.h
+//  
+//
+//  Created by shichen.fsc on 2023/12/10.
+//
+
+#ifndef ConversationCode_h
+#define ConversationCode_h
+
+
+typedef int ConversatioinResultCode;
+
+#define SUCCESS (0)
+////legacy, not required handle
+#define DEFAULT_ERROR (10) //default err value.
+
+#define MEM_ALLOC_ERROR (11)
+#define INIT_FAILED (50)
+#define NOT_CONNECTED (51)
+#define ENGINE_NULL (52)
+#define ILLEGAL_PARAM (53)
+#define ILLEGAL_INIT_PARAM (54)
+#define INVALID_STATE (55)
+#define HAS_INVOKED (56)
+#define NOT_CREATE_CONVERSATION (57)
+#define SKIP_SEND_DATA (58)
+#define SEND_DATA_FAILED (59)
+#define INVALID_AUDIO_DATA (60)
+#define STOP_FAILED (61)
+#define CANCEL_FAILED (62)
+#define INVOKE_TIMEOUT (63)
+#define REQUEST_DENIED (64)
+#define REQUEST_ACCEPTED (65)
+#define SKIP_DESTROY_CONVERSATION (66)
+
+#define INTERNAL_ENGINE_INIT_FAILED (100)
+#define INTERNAL_ENGINE_SET_PARAM_FAILED (101)
+#define INTERNAL_ENGINE_STOP_FAILED (102)
+#define INTERNAL_ENGINE_CANCEL_FAILED (103)
+
+#define EMPTY_CONV_EVENT (200)
+#define INVALID_CONV_EVENT_MSG_TYPE (201)
+
+#define WS_CONNECT_FAILED (300)
+#define SERVER_NOT_ACCESS (301)
+#define AUTH_FAILED (302)
+#define CLOSE_SOCKET_FAILED (303)
+#define SERVER_INTERNAL_ERROR (304)
+
+#define NO_SUPPORT_MODE (310)
+#define JSON_FORMAT_ERROR (311)
+#define SSL_ERROR (312)
+#define SSL_CONNECT_FAILED (313)
+#define HTTP_CONNECT_FAILED (314)
+#define NS_FAILED (315)
+#define SOCKET_CLOSED (316)
+#define PING_NO_SUPPORT (317)
+#define UTF8_ERROR (318)
+#define SYSTEM_CALL_FAILED (319)
+#define PROTOCOL_ERROR (320)
+#define PARAMETERS_ERROR (321)
+#define HTTP_DNS_FAILED_WARNNING (322)
+
+#define NLS_IS_NULL (350)
+#define NLS_INVOKE_TIMEOUT (351)
+#define NLS_START_FAILED (352)
+#define NLS_STOP_FAILED (353)
+#define NLS_CANCEL_FAILED (354)
+#define NLS_START_INBOUND_FAILED (355)
+#define NLS_CANCEL_BOUND_FAILED (358)
+#define NLS_SEND_AUDIO_FAILED (360)
+
+#define ENCODER_EXISTENT (400)
+#define DECODER_EXISTENT (401)
+#define ENCODER_INEXISTENT (402)
+#define DECODER_INEXISTENT (403)
+#define OPUS_ENCODER_CREATE_FAILED (404)
+#define OPUS_DECODER_CREATE_FAILED (405)
+#define INVALIED_ENCODER_TYPE (407)
+
+#endif /* ConversationCode_h */

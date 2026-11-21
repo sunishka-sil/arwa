@@ -1,0 +1,11 @@
+framework module MLVisionM6SDK {
+  umbrella header "MLVisionM6SDK-umbrella.h"
+
+  export *
+  module * { export * }
+}
+
+module MLVisionM6SDK.Swift {
+  header "MLVisionM6SDK-Swift.h"
+  requires objc
+}

@@ -1,0 +1,356 @@
+// swift-interface-format-version: 1.0
+// swift-compiler-version: Apple Swift version 6.1.2 effective-5.10 (swiftlang-6.1.2.1.2 clang-1700.0.13.5)
+// swift-module-flags: -target arm64-apple-ios12.0 -enable-objc-interop -enable-library-evolution -swift-version 5 -enforce-exclusivity=checked -Onone -enable-experimental-feature DebugDescriptionMacro -enable-bare-slash-regex -module-name multimodal_dialog
+// swift-module-flags-ignorable:  -interface-compiler-version 6.1.2
+import AliVCSDK_ARTC
+import Foundation
+import Swift
+import UIKit
+import _Concurrency
+import _StringProcessing
+import _SwiftConcurrencyShims
+@_exported import multimodal_dialog
+public struct MultiModalRequestParam {
+  public var upStream: multimodal_dialog.MultiModalRequestParam.UpStream?
+  public var downStream: multimodal_dialog.MultiModalRequestParam.DownStream?
+  public var clientInfo: multimodal_dialog.MultiModalRequestParam.ClientInfo?
+  public var bizParams: multimodal_dialog.MultiModalRequestParam.BizParams?
+  public var customInput: multimodal_dialog.MultiModalRequestParam.CustomInput?
+  public var images: [Any]?
+  public struct CustomInput {
+    public var workspaceId: Swift.String?
+    public var appId: Swift.String?
+    public var directive: Swift.String
+    public var dialogId: Swift.String?
+    public var text: Swift.String?
+    public var type: Swift.String?
+  }
+  public struct UpStream {
+    public var type: Swift.String
+    public var mode: Swift.String?
+    public var audioFormat: Swift.String
+    public var passThroughParams: [Swift.String : Any]?
+  }
+  public struct DownStream {
+    public var voice: Swift.String?
+    public var sampleRate: Swift.Int?
+    public var intermediateText: Swift.String
+    public var debug: Swift.Bool
+    public var type: Swift.String
+    public var audioFormat: Swift.String
+    public var passThroughParams: [Swift.String : Any]?
+  }
+  public struct ClientInfo {
+    public var userId: Swift.String?
+    public var device: multimodal_dialog.MultiModalRequestParam.ClientInfo.Device?
+    public var network: multimodal_dialog.MultiModalRequestParam.ClientInfo.Network?
+    public var location: multimodal_dialog.MultiModalRequestParam.ClientInfo.Location?
+    public var status: Any?
+    public var passThroughParams: [Swift.String : Any]?
+    public struct Device {
+      public var uuid: Swift.String?
+      public init(uuid: Swift.String? = nil)
+    }
+    public struct Network {
+      public var ip: Swift.String?
+      public init(ip: Swift.String? = nil)
+    }
+    public struct Location {
+      public var cityName: Swift.String?
+      public var latitude: Swift.String?
+      public var longitude: Swift.String?
+      public init(cityName: Swift.String? = nil, latitude: Swift.String? = nil, longitude: Swift.String? = nil)
+    }
+  }
+  public struct BizParams {
+    public var userDefinedParams: Any?
+    public var userDefinedTokens: Any?
+    public var toolPrompts: Any?
+    public var videos: Any?
+    public var userPromptParams: Any?
+    public var userQueryParams: Any?
+    public var passThroughParams: [Swift.String : Any]?
+    public init(userDefinedParams: Any? = nil, userDefinedTokens: Any? = nil, toolPrompts: Any? = nil, videos: Any? = nil, userPromptParams: Any? = nil, userQueryParams: Any? = nil)
+  }
+  public var parameters: [Swift.String : Any] {
+    get
+  }
+}
+extension multimodal_dialog.MultiModalRequestParam {
+  public init(builder: (inout multimodal_dialog.MultiModalRequestParam) -> Swift.Void)
+}
+extension multimodal_dialog.MultiModalRequestParam.CustomInput {
+  public init(builder: (inout multimodal_dialog.MultiModalRequestParam.CustomInput) -> Swift.Void)
+}
+extension multimodal_dialog.MultiModalRequestParam.UpStream {
+  public init(builder: (inout multimodal_dialog.MultiModalRequestParam.UpStream) -> Swift.Void)
+}
+extension multimodal_dialog.MultiModalRequestParam.DownStream {
+  public init(builder: (inout multimodal_dialog.MultiModalRequestParam.DownStream) -> Swift.Void)
+}
+extension multimodal_dialog.MultiModalRequestParam.ClientInfo {
+  public init(builder: (inout multimodal_dialog.MultiModalRequestParam.ClientInfo) -> Swift.Void)
+}
+extension multimodal_dialog.MultiModalRequestParam.BizParams {
+  public init(builder: (inout multimodal_dialog.MultiModalRequestParam.BizParams) -> Swift.Void)
+}
+extension Swift.String {
+  public func aly_base64Encode() -> Swift.String
+  public func aly_base64Decode() -> Swift.String?
+}
+public enum LogLevel : Swift.String {
+  case debug
+  case info
+  case warning
+  case error
+  public init?(rawValue: Swift.String)
+  public typealias RawValue = Swift.String
+  public var rawValue: Swift.String {
+    get
+  }
+}
+public struct LogEntry {
+  public let timestamp: Foundation.Date
+  public let level: multimodal_dialog.LogLevel
+  public let message: Swift.String
+  public let file: Swift.String
+  public let function: Swift.String
+  public let line: Swift.Int
+  public var description: Swift.String {
+    get
+  }
+}
+@_hasMissingDesignatedInitializers final public class TYLogger {
+  public static let shared: multimodal_dialog.TYLogger
+  final public func log(level: multimodal_dialog.LogLevel, _ message: Swift.String, file: Swift.String = #file, function: Swift.String = #function, line: Swift.Int = #line)
+  final public func addLogHandler(_ handler: @escaping (multimodal_dialog.LogEntry) -> Swift.Void)
+  final public func getAllLogs() -> [multimodal_dialog.LogEntry]
+  @objc deinit
+}
+extension multimodal_dialog.TYLogger {
+  final public func debug(_ message: Swift.String, file: Swift.String = #file, function: Swift.String = #function, line: Swift.Int = #line)
+  final public func info(_ message: Swift.String, file: Swift.String = #file, function: Swift.String = #function, line: Swift.Int = #line)
+  final public func warning(_ message: Swift.String, file: Swift.String = #file, function: Swift.String = #function, line: Swift.Int = #line)
+  final public func error(_ message: Swift.String, file: Swift.String = #file, function: Swift.String = #function, line: Swift.Int = #line)
+}
+public class MultiModalDialog {
+  public var onConnected: (() -> Swift.Void)?
+  public var onConversationStarted: (() -> Swift.Void)?
+  public var onConversationEvent: ((multimodal_dialog.DialogEvent) -> Swift.Void)?
+  public var onConversationStatechanged: ((multimodal_dialog.DialogState) -> Swift.Void)?
+  public var onMessageReceived: (([Swift.String : Any]?, multimodal_dialog.ResponsetMessageType) -> Swift.Void)?
+  public var onErrorReceived: ((multimodal_dialog.TYError) -> Swift.Void)?
+  public var onVolumeChanged: ((Swift.Float, multimodal_dialog.TYVolumeSourceType) -> Swift.Void)?
+  public var onFirstVideoPacketSent: (() -> Swift.Void)?
+  public var onPerformaceDataReceived: ((multimodal_dialog.TYChatPerformace) -> Swift.Void)?
+  public var onConnectionStatusChanged: ((multimodal_dialog.RTCConnectionStatus) -> Swift.Void)?
+  public var onRecorderData: ((Swift.UnsafeMutablePointer<Swift.UInt8>, Swift.Int32) -> Swift.Void)?
+  public var onSynthesizedData: ((Swift.UnsafeMutablePointer<Swift.UInt8>, Swift.Int32) -> Swift.Void)?
+  public var onKeywordSpotted: ((Swift.String, multimodal_dialog.KeyWordsType) -> Swift.Void)?
+  public static var useExternalAudioPlayer: Swift.Bool
+  public static var useExternalAudioRecorder: Swift.Bool
+  public static var wsUseInternalAEC: Swift.Bool
+  public static var wsUseInternalVAD: Swift.Bool
+  public static var kwsAwakeTimeout: Swift.Int
+  public init(url: Swift.String?, chainMode: multimodal_dialog.ChainMode, workSpaceId: Swift.String, appId: Swift.String, mode: multimodal_dialog.DialogMode)
+  @objc deinit
+  public static func enableDebug(enable: Swift.Bool)
+  public func setModel(model: Swift.String)
+  public func enableKWS(enableKws: Swift.Bool = false, wakeupOnly: Swift.Bool = false)
+  public func enableKWS(enableKws: Swift.Bool = false, wakeupOnly: Swift.Bool = false, wakeUpWords: [Any]?)
+  public func beginInteraction()
+  public func start(apiKey: Swift.String, params: multimodal_dialog.MultiModalRequestParam, dialogId: Swift.String? = nil, taskId: Swift.String? = nil, completion: @escaping (Swift.Bool, multimodal_dialog.TYError?) -> Swift.Void)
+  public func interrupt(completion: ((Swift.Bool) -> Swift.Void)? = nil)
+  public func stop()
+  public func setupRTCView(_ view: UIKit.UIView)
+  public func setupLocalView(_ view: UIKit.UIView, config: multimodal_dialog.TYVideoConfig)
+  public func publishLocalVideo()
+  public func unPublishLocalVideo()
+  public func swithCamera()
+  public func getCurrentCameraDirection() -> multimodal_dialog.RtcCameraDirection?
+  public func muteLocalMic(mute: Swift.Bool)
+  public func muteRemoteAudio(mute: Swift.Bool)
+  public func sendHeartBeat()
+  public func startSpeech()
+  public func stopSpeech()
+  public func cancelSpeech()
+  public func sendLocalRespondingStarted()
+  public func sendLocalRespondingEnded()
+  public func requestToRespond(type: Swift.String, text: Swift.String, params: [Swift.String : Any])
+  public func updateInfo(params: [Swift.String : Any])
+  public func sendAudioData(data: Swift.UnsafeMutablePointer<Swift.UInt8>, length: Swift.Int32) -> Swift.Int32?
+  public func sendRefData(data: Swift.UnsafeMutablePointer<Swift.UInt8>, length: Swift.Int32) -> Swift.Int32?
+  public func debugStartLogs()
+  public func debugExportLogs(_ vc: UIKit.UIViewController?, _ completion: (() -> Swift.Void)? = nil)
+  public func getUUID() -> Swift.String
+}
+public enum DialogState : Swift.String {
+  case idle
+  case listening
+  case responding
+  case thinking
+  public init?(rawValue: Swift.String)
+  public typealias RawValue = Swift.String
+  public var rawValue: Swift.String {
+    get
+  }
+}
+public enum RtcCameraDirection : Swift.Int {
+  case AliRtcCameraDirectionInvalid
+  case AliRtcCameraDirectionBack
+  case AliRtcCameraDirectionFront
+  public init?(rawValue: Swift.Int)
+  public typealias RawValue = Swift.Int
+  public var rawValue: Swift.Int {
+    get
+  }
+}
+public enum RTCConnectionStatus {
+  case inited
+  case disconnected
+  case connected
+  case connecting
+  case reconnecting
+  case failed
+  public static func == (a: multimodal_dialog.RTCConnectionStatus, b: multimodal_dialog.RTCConnectionStatus) -> Swift.Bool
+  public func hash(into hasher: inout Swift.Hasher)
+  public var hashValue: Swift.Int {
+    get
+  }
+}
+public enum DialogEvent : Swift.String {
+  case SpeechStarted
+  case SpeechEnded
+  case RespondingStarted
+  case RespondingEnded
+  case InterruptAccepted
+  case VoiceTimeout
+  public init?(rawValue: Swift.String)
+  public typealias RawValue = Swift.String
+  public var rawValue: Swift.String {
+    get
+  }
+}
+public enum KeyWordsType : Swift.String {
+  case MAIN
+  case OTHER
+  public init?(rawValue: Swift.String)
+  public typealias RawValue = Swift.String
+  public var rawValue: Swift.String {
+    get
+  }
+}
+public struct TYVoiceChatMessage {
+  public var type: multimodal_dialog.ResponsetMessageType
+  public var text: Swift.String?
+  public var isFinished: Swift.Bool
+  public init(type: multimodal_dialog.ResponsetMessageType, text: Swift.String? = nil, isFinished: Swift.Bool)
+}
+public struct AudioFrame {
+  public let dataPtr: Swift.UnsafeMutableRawPointer?
+  public let numOfSamples: Swift.Int32
+  public let bytesPerSample: Swift.Int32
+  public let numOfChannels: Swift.Int32
+  public let samplesPerSec: Swift.Int32
+}
+public enum ResponsetMessageType : Swift.Int {
+  case speaking
+  case responding
+  public init?(rawValue: Swift.Int)
+  public typealias RawValue = Swift.Int
+  public var rawValue: Swift.Int {
+    get
+  }
+}
+public enum DialogMode : Swift.String {
+  case tap2talk
+  case duplex
+  case push2talk
+  public init?(rawValue: Swift.String)
+  public typealias RawValue = Swift.String
+  public var rawValue: Swift.String {
+    get
+  }
+}
+public enum ChainMode : Swift.String {
+  case WebSocket
+  case RTC
+  public init?(rawValue: Swift.String)
+  public typealias RawValue = Swift.String
+  public var rawValue: Swift.String {
+    get
+  }
+}
+public struct TYVideoConfig {
+  public var fps: Swift.Int
+  public var width: Swift.Int
+  public var height: Swift.Int
+  public var bitrate: Swift.Int
+  public init(fps: Swift.Int, width: Swift.Int, height: Swift.Int, bitrate: Swift.Int)
+}
+public enum TYVolumeSourceType : Swift.Int {
+  case mic
+  case player
+  public init?(rawValue: Swift.Int)
+  public typealias RawValue = Swift.Int
+  public var rawValue: Swift.Int {
+    get
+  }
+}
+public struct TYError : Swift.Error {
+  public let key: Swift.String
+  public let message: Swift.String?
+}
+extension multimodal_dialog.TYError {
+  public static let premissionFailed: multimodal_dialog.TYError
+  public static let authFailed: multimodal_dialog.TYError
+  public static let joinChannelFailed: multimodal_dialog.TYError
+  public static let voiceChatFailed: multimodal_dialog.TYError
+}
+public struct TYChatPerformace {
+  public let llmCost: Swift.Int64
+  public let ttsCost: Swift.Int64
+  public let avatarCost: Swift.Int64
+}
+public enum TYAudioDataChannelMode : Swift.Int {
+  case vad
+  case asr
+  case both
+  public init?(rawValue: Swift.Int)
+  public typealias RawValue = Swift.Int
+  public var rawValue: Swift.Int {
+    get
+  }
+}
+extension multimodal_dialog.LogLevel : Swift.Equatable {}
+extension multimodal_dialog.LogLevel : Swift.Hashable {}
+extension multimodal_dialog.LogLevel : Swift.RawRepresentable {}
+extension multimodal_dialog.DialogState : Swift.Equatable {}
+extension multimodal_dialog.DialogState : Swift.Hashable {}
+extension multimodal_dialog.DialogState : Swift.RawRepresentable {}
+extension multimodal_dialog.RtcCameraDirection : Swift.Equatable {}
+extension multimodal_dialog.RtcCameraDirection : Swift.Hashable {}
+extension multimodal_dialog.RtcCameraDirection : Swift.RawRepresentable {}
+extension multimodal_dialog.RTCConnectionStatus : Swift.Equatable {}
+extension multimodal_dialog.RTCConnectionStatus : Swift.Hashable {}
+extension multimodal_dialog.DialogEvent : Swift.Equatable {}
+extension multimodal_dialog.DialogEvent : Swift.Hashable {}
+extension multimodal_dialog.DialogEvent : Swift.RawRepresentable {}
+extension multimodal_dialog.KeyWordsType : Swift.Equatable {}
+extension multimodal_dialog.KeyWordsType : Swift.Hashable {}
+extension multimodal_dialog.KeyWordsType : Swift.RawRepresentable {}
+extension multimodal_dialog.ResponsetMessageType : Swift.Equatable {}
+extension multimodal_dialog.ResponsetMessageType : Swift.Hashable {}
+extension multimodal_dialog.ResponsetMessageType : Swift.RawRepresentable {}
+extension multimodal_dialog.DialogMode : Swift.Equatable {}
+extension multimodal_dialog.DialogMode : Swift.Hashable {}
+extension multimodal_dialog.DialogMode : Swift.RawRepresentable {}
+extension multimodal_dialog.ChainMode : Swift.Equatable {}
+extension multimodal_dialog.ChainMode : Swift.Hashable {}
+extension multimodal_dialog.ChainMode : Swift.RawRepresentable {}
+extension multimodal_dialog.TYVolumeSourceType : Swift.Equatable {}
+extension multimodal_dialog.TYVolumeSourceType : Swift.Hashable {}
+extension multimodal_dialog.TYVolumeSourceType : Swift.RawRepresentable {}
+extension multimodal_dialog.TYAudioDataChannelMode : Swift.Equatable {}
+extension multimodal_dialog.TYAudioDataChannelMode : Swift.Hashable {}
+extension multimodal_dialog.TYAudioDataChannelMode : Swift.RawRepresentable {}

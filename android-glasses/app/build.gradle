@@ -9,11 +9,32 @@ android {
         targetSdk 28       // match the glasses' Android 9 so no newer-Android behaviour kicks in
         versionCode 1
         versionName '0.1'
+        ndk { abiFilters 'arm64-v8a' }
     }
     compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+    buildTypes {
+        debug {
+            // Install alongside the existing hackathon app while trying the phone companion.
+            applicationIdSuffix '.companion'
+            versionNameSuffix '-companion'
+        }
+    }
     // No MicroLumin SDK here on purpose: the kit has no glasses-side SDK (XRAppManager .aar is missing).
-    // Everything uses plain Android APIs: WebView, Camera, TextToSpeech, SpeechRecognizer, key events.
+    // Vosk is the offline microphone recognizer used by the voice-commands branch.
 }
 
 dependencies {
+    implementation 'com.alphacephei:vosk-android:0.3.47@aar'
+    implementation 'net.java.dev.jna:jna:5.13.0@aar'
 }
+
+tasks.register('verifyVoiceModel') {
+    doLast {
+        for (String entry : ['uuid', 'am/final.mdl', 'graph/HCLr.fst', 'graph/Gr.fst']) {
+            if (!file("src/main/assets/model-en-us/${entry}").isFile()) {
+                throw new GradleException('Prepare the offline voice model first: python3 scripts/prepare-voice-model.py (from the arwa folder).')
+            }
+        }
+    }
+}
+tasks.named('preBuild').configure { dependsOn 'verifyVoiceModel' }

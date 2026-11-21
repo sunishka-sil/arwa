@@ -1,0 +1,133 @@
+{
+  "id": "coupling",
+  "version": 1,
+  "title": "Mount motor to pump: jaw coupling",
+  "summary": "Follow the existing motor-to-pump coupling guide, with animated 3D instructions on your glasses.",
+  "steps": [
+    {
+      "k": "LOCKOUT",
+      "h": "Lock out the motor",
+      "d": "Disconnect to OFF, padlock + tag on the handle",
+      "part": "Disconnect switch",
+      "parts": [
+        "switch",
+        "lever",
+        "lock"
+      ],
+      "spec": {
+        "label": "Zero energy",
+        "value": "0",
+        "unit": "V"
+      },
+      "hazard": "Try the start button after locking: motor must not run"
+    },
+    {
+      "k": "PUMP HUB",
+      "h": "Slide hub onto pump shaft",
+      "d": "Flush with the shaft end, tighten set screw",
+      "part": "Pump-side hub",
+      "parts": [
+        "pumpHub"
+      ],
+      "spec": {
+        "label": "Set screw",
+        "value": "10",
+        "unit": "N·m"
+      }
+    },
+    {
+      "k": "MOTOR HUB",
+      "h": "Key in, motor hub on",
+      "d": "Seat the key in the keyway, slide the hub on",
+      "part": "Key + motor-side hub",
+      "parts": [
+        "key",
+        "motorHub"
+      ],
+      "spec": {
+        "label": "Key",
+        "value": "8×7×40",
+        "unit": "mm"
+      }
+    },
+    {
+      "k": "SPIDER",
+      "h": "Seat the spider in the jaws",
+      "d": "6-lobe elastomer insert, fully between the jaws",
+      "part": "Spider insert",
+      "parts": [
+        "spider"
+      ],
+      "spec": {
+        "label": "Spider",
+        "value": "98",
+        "unit": "Shore A"
+      }
+    },
+    {
+      "k": "SET MOTOR",
+      "h": "Lower motor onto baseplate",
+      "d": "Hold a 2 mm gap between hubs with the gauge",
+      "part": "Motor + gap gauge",
+      "parts": [
+        "motor",
+        "gauge"
+      ],
+      "spec": {
+        "label": "Hub gap",
+        "value": "2 ±0.5",
+        "unit": "mm"
+      },
+      "hazard": "Pinch point: hands off the feet while lowering"
+    },
+    {
+      "k": "FOOT BOLTS",
+      "h": "Insert the 4 foot bolts",
+      "d": "M12, hand-tight only for now",
+      "part": "M12 foot bolts",
+      "parts": [
+        "b0",
+        "b1",
+        "b2",
+        "b3"
+      ],
+      "spec": {
+        "label": "Foot bolts",
+        "value": "M12",
+        "unit": "hand-tight"
+      }
+    },
+    {
+      "k": "TORQUE",
+      "h": "Align, then torque 1 → 3 → 2 → 4",
+      "d": "Cross pattern, 70 N·m each",
+      "part": "Bolt sequence",
+      "parts": [
+        "b0",
+        "b1",
+        "b2",
+        "b3"
+      ],
+      "spec": {
+        "label": "Torque",
+        "value": "70",
+        "unit": "N·m"
+      }
+    },
+    {
+      "k": "GUARD",
+      "h": "Close the coupling guard",
+      "d": "Both halves latched, then remove lock",
+      "part": "Coupling guard",
+      "parts": [
+        "guard"
+      ],
+      "spec": {
+        "label": "Guard latches",
+        "value": "2",
+        "unit": "closed"
+      },
+      "hazard": "Remove your lock only after the guard is latched"
+    }
+  ]
+}
