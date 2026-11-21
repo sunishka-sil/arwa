@@ -31,8 +31,8 @@ import java.util.concurrent.Executors;
  * Listens on the glasses' own microphone (offline, Vosk) for voice commands and POSTs each one to the
  * server's /cmd, the same endpoint the phone/Mac remote uses:
  *   next, back, show, hide, repeat     → fire on the first guess (fast)
- *   voice off / sound off              → mute     (on the finished phrase, so "voice o…" can't flip wrong)
- *   voice on  / sound on               → unmute
+ *   off                                → mute     (on the finished word, so a half-heard word can't flip wrong)
+ *   on                                 → unmute
  * ("mute"/"unmute" were dropped: the small model doesn't know "unmute", and "mute" was unreliable on the
  *  glasses. "voice off"/"voice on" were recognized 6/6 each and never confused, tested with six voices.)
  *
@@ -57,7 +57,7 @@ class VoiceCommands {
     static float BARGE_RATIO = 2.5f;                       // voice must peak this many times above the echo level
     static int BARGE_MIN = 2500;                           // ...and above this absolute level
     private static final String GRAMMAR = "[\"next\", \"back\", \"show\", \"hide\", \"repeat\", "
-            + "\"voice off\", \"voice on\", \"sound off\", \"sound on\", \"[unk]\"]";
+            + "\"off\", \"on\", \"[unk]\"]";
 
     interface Status { void onVoiceStatus(String status); }
 
@@ -173,26 +173,14 @@ class VoiceCommands {
         for (int i = 0; i < w.length; i++) {
             switch (w[i]) {
                 case "next": case "back": case "show": case "hide": case "repeat": out.add(w[i]); break;
-                case "voice": case "sound":
-                    if (i + 1 < w.length && (w[i + 1].equals("off") || w[i + 1].equals("on"))) {
-                        // on/off only from the finished phrase: a partial "voice on" can still become "voice off"
-                        if (isFinal) out.add(w[i + 1].equals("off") ? "mute" : "unmute");
-                        i++;
-                    }
-                    break;
-                case "on": case "off":
-                    // "voice on" sometimes arrives as just "on": accept it as the end of a short finished phrase
-                    if (isFinal && i == w.length - 1 && out.isEmpty() && allUnknown(w, i)) out.add(w[i].equals("off") ? "mute" : "unmute");
+                case "off": case "on":
+                    // only from the finished word: a partial "on" can still become "off"
+                    if (isFinal) out.add(w[i].equals("off") ? "mute" : "unmute");
                     break;
                 default: break;
             }
         }
         return out;
-    }
-
-    private static boolean allUnknown(String[] w, int end) {
-        for (int i = 0; i < end; i++) if (!w[i].equals("[unk]")) return false;
-        return end <= 2;
     }
 
     private static String field(String json, String key) {
