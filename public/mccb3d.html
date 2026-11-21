@@ -9,7 +9,7 @@
   :root { --fg: #fff; --dim: #9ca3af; --on: #22c55e; --line: #1f2937; }
   html, body { margin: 0; height: 100%; background: #000; color: var(--fg); font: 600 20px/1.25 system-ui, sans-serif; overflow: hidden; }
   #wrap { position: relative; width: 100vw; height: 100vh; }
-  #view { position: absolute; inset: 0; }
+  #view { position: absolute; top: 0; right: 0; bottom: 0; left: 0; }
   canvas { display: block; }
   #hud { position: absolute; top: 3.5%; left: 5%; right: 5%; pointer-events: none; }
   #hud .k { font: 600 13px/1 system-ui; letter-spacing: .12em; color: var(--on); }
@@ -24,12 +24,21 @@
 
   /* Desktop preview: the glasses frame at its real 640x480, with the step list beside it. */
   /* Corner panel on the glasses (hud-layout.js): enlarge text inside the shrunk box. */
-  body.boxed #hud, body.boxed #part, body.boxed #foot { zoom: 1.6; }
-  body.boxed #frame { position: absolute; inset: 0; }
+  /* Glasses: one fixed layout. Text is a set number of lines that never wraps into the model; the model fills the rest. */
+  #hud .k, #hud .h, #hud .d, #part { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  body.boxed #hud { top: 2%; left: 3%; right: 3%; }
+  body.boxed #hud .k { font-size: 20px; }
+  body.boxed #hud .h { font-size: 34px; margin-top: 6px; }
+  body.boxed #hud .d { font-size: 22px; margin-top: 4px; }
+  body.boxed #part { font-size: 22px; bottom: 9%; right: 3%; left: 3%; }
+  body.boxed #foot { font-size: 18px; bottom: 2%; left: 3%; right: 3%; }
+  body.boxed #dots i { width: 16px; height: 16px; }
+  body.boxed #widget { font-size: 26px; }
+  body.boxed #frame { position: absolute; top: 0; right: 0; bottom: 0; left: 0; }
   body.desk { overflow: auto; background: #0b0f14; color: #e5e7eb; }
   body.desk #wrap { display: flex; gap: 28px; align-items: flex-start; justify-content: center; padding: 28px 16px; height: auto; width: auto; flex-wrap: wrap; }
-  body.desk #frame { position: relative; width: 640px; max-width: 100%; aspect-ratio: 4 / 3; background: #000; border-radius: 14px; box-shadow: 0 0 0 2px #1f2937, 0 20px 60px rgba(0,0,0,.6); overflow: hidden; }
-  body.desk #view { position: absolute; inset: 0; }
+  body.desk #frame { position: relative; width: 640px; max-width: 100%; height: 480px; aspect-ratio: 4 / 3; background: #000; border-radius: 14px; box-shadow: 0 0 0 2px #1f2937, 0 20px 60px rgba(0,0,0,.6); overflow: hidden; }
+  body.desk #view { position: absolute; top: 0; right: 0; bottom: 0; left: 0; }
   #heard { position: absolute; top: 3.5%; right: 5%; font: 700 15px system-ui; color: var(--on); opacity: 0; transition: opacity .2s; pointer-events: none; }
   #heard.on { opacity: 1; }
   /* AI "ask" widget: one glanceable answer, bottom-left of the panel, fades after its time. */
@@ -39,6 +48,8 @@
   /* "Hide": clear the wearer's view completely except one faint dot, so they know it's paused, not dead. */
   body.cleared #view, body.cleared #hud, body.cleared #part, body.cleared #foot { visibility: hidden; }
   body.cleared::after { content: ''; position: fixed; top: 4%; right: 4%; width: 8px; height: 8px; border-radius: 50%; background: #333; }
+  /* Safety net only: if WebGL fails, the step text gets bigger so the job can still run. */
+  body.nogl #view { display: none; } body.nogl #hud { font-size: 26px; }
   #side { display: none; }
   body.desk #side { display: block; width: 340px; max-width: 100%; }
   #side h1 { font-size: 18px; margin: 0 0 4px; }
@@ -86,13 +97,14 @@
 // MCCB (moulded-case circuit breaker) workflow, three.js r149 primitives only (WebGL1, Android 9 WebView safe, no external models).
 // URL: ?step=3 to start at a step, ?spin=0 to stop the turntable, ?mono=1 single-colour waveguide, ?fps=30, ?desk=1 force preview layout.
 var q = new URLSearchParams(location.search);
-var DESK = q.get('desk') === '1' || (q.get('desk') !== '0' && innerWidth >= 1000);
+// Never the side-by-side preview inside the glasses app, whatever width the WebView reports.
+var DESK = !window.ARWAGlasses && (q.get('desk') === '1' || (q.get('desk') !== '0' && innerWidth >= 1000));
 if (DESK) document.body.classList.add('desk');
 // The M6 is a single-colour (green) display, so inside the glasses app default to brightness levels:
 // active = full + pulsing, done = dim, not yet = faint.
 var MONO = q.get('mono') === '1' || (q.get('mono') !== '0' && !!window.ARWAGlasses);
 if (MONO) document.documentElement.style.setProperty('--on', '#fff');
-var COL = MONO ? { on: 0xffffff, done: 0x5a5a5a, ghost: 0x2a2a2a } : { on: 0x22c55e, done: 0x9ca3af, ghost: 0x374151 };
+var COL = MONO ? { on: 0xffffff, done: 0x8c8c8c, ghost: 0x4a4a4a } : { on: 0x22c55e, done: 0x9ca3af, ghost: 0x374151 };
 var FPS = Number(q.get('fps') || 30), SPIN = q.get('spin') !== '0';
 
 var PAGE_JOB = 'mccb', JOB = window.WF_JOBS[PAGE_JOB];
@@ -101,19 +113,52 @@ var N = STEPS.length, cur = Math.max(0, Math.min(N, Number(q.get('step') || 1) -
 
 // ---------- renderer ----------
 var view = document.getElementById('view');
-var renderer = new THREE.WebGLRenderer({ antialias: DESK, powerPreference: 'low-power' });
+// Chrome 74 WebView on the M6: plain WebGL1, no antialias, never refuse a slow GPU. Every outcome is logged (adb logcat -s ARWA).
+var NOGL = false, renderer;
+function glInfo(c) { try { var gl = c.getContext('webgl') || c.getContext('experimental-webgl'); var d = gl && gl.getExtension('WEBGL_debug_renderer_info'); return gl ? (d ? gl.getParameter(d.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER)) + ' / ' + gl.getParameter(gl.VERSION) : 'no context'; } catch (e) { return 'error ' + e.message; } }
+try {
+  if (!window.THREE) throw new Error('three.min.js did not load (check /vendor/three.min.js)');
+  if (q.get('gl') === '0') throw new Error('3D turned off by ?gl=0');
+  var glCanvas = document.createElement('canvas');
+  var ctx = glCanvas.getContext('webgl', { antialias: false, alpha: false, failIfMajorPerformanceCaveat: false, preserveDrawingBuffer: false }) || glCanvas.getContext('experimental-webgl', { antialias: false, alpha: false });
+  if (!ctx) throw new Error('getContext("webgl") returned null');
+  renderer = new THREE.WebGLRenderer({ canvas: glCanvas, context: ctx, antialias: false, powerPreference: 'default' });
+  console.log('ARWA 3D: WebGL OK · ' + glInfo(glCanvas) + ' · three r' + THREE.REVISION);
+} catch (e) {
+  NOGL = true; console.error('ARWA 3D: WebGL FAILED, text only · ' + e.message);
+  document.body.classList.add('nogl');
+  renderer = { domElement: document.createElement('canvas'), setPixelRatio: function () {}, setClearColor: function () {}, setSize: function () {}, render: function () {}, clear: function () {} };
+}
 renderer.setPixelRatio(DESK ? Math.min(2, devicePixelRatio || 1) : 1);
 renderer.setClearColor(0x000000, 1);
+// Thick lines: WebGL ignores lineWidth on most GPUs, so each frame draws the wireframe a few times, shifted by 1-2 px.
+// Everything gets ~3 px lines; the highlighted part (layer 1) gets ~5 px. ?thick=0 turns it off, ?thick=2 makes it bolder.
+var VW = 640, VH = 480, THICK = q.get('thick') == null ? 1 : Number(q.get('thick'));
+var PASS_ALL = [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]], PASS_HI = [[2, 0], [-2, 0], [0, 2], [0, -2]];
+renderer.autoClear = false;
+function draw() {
+  renderer.clear();
+  if (!THICK) { renderer.render(scene, camera); return; }
+  var k = THICK, i, o;
+  for (i = 0; i < PASS_ALL.length; i++) { o = PASS_ALL[i]; camera.setViewOffset(VW, VH, o[0] * k, o[1] * k, VW, VH); renderer.render(scene, camera); }
+  camera.layers.set(1);
+  for (i = 0; i < PASS_HI.length; i++) { o = PASS_HI[i]; camera.setViewOffset(VW, VH, o[0] * k, o[1] * k, VW, VH); renderer.render(scene, camera); }
+  camera.layers.set(0); camera.clearViewOffset();
+}
 view.appendChild(renderer.domElement);
 var scene = new THREE.Scene();
 var camera = new THREE.PerspectiveCamera(32, 4 / 3, 0.1, 100);
 camera.position.set(0, 1.6, 11.5); camera.lookAt(0, -0.2, 0);
-function size() { var w = view.clientWidth, h = view.clientHeight; renderer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix(); }
+function size() {
+  var w = view.clientWidth || innerWidth, h = view.clientHeight || innerHeight; // never a 0x0 canvas
+  renderer.setSize(w, h); VW = w; VH = h; camera.aspect = w / h; camera.updateProjectionMatrix();
+  if (!size.logged) { size.logged = true; console.log('ARWA 3D: canvas ' + w + 'x' + h + ' (window ' + innerWidth + 'x' + innerHeight + ', dpr ' + (devicePixelRatio || 1) + ')'); }
+}
 addEventListener('resize', size);
 
 // ---------- parts (all wireframe edges). The breaker stands upright facing you like it would in a panel:
 // X = the 3 poles (left to right), Y = line side on top / load side below, Z = base at the back, cover toward you.
-var table = new THREE.Group(); scene.add(table); table.position.y = -0.55; table.scale.setScalar(0.74);
+var pivot = new THREE.Group(); scene.add(pivot); var table = new THREE.Group(); pivot.add(table); table.position.y = -0.55; table.scale.setScalar(0.74);
 var P = {};
 function edgeObj(geo, angle) { var m = new THREE.LineBasicMaterial({ color: COL.ghost, transparent: true, opacity: 1 }); var o = new THREE.LineSegments(new THREE.EdgesGeometry(geo, angle || 20), m); o.userData.mats = [m]; return o; }
 function cylZ(r, len, seg) { var g = new THREE.CylinderGeometry(r, r, len, seg || 20); g.rotateX(Math.PI / 2); return g; }
@@ -187,7 +232,7 @@ var INSTALL = { base: 0, tag: 0, s0: 1, s1: 1, s2: 1, s3: 1, s4: 1, s5: 1, arms:
 var SEQ = [0, 2, 1, 3]; // cover screw order 1 -> 3 -> 2 -> 4 (indices)
 var INSIDE = ['s0', 's1', 's2', 's3', 's4', 's5', 'arms', 'c0', 'c1', 'c2', 'trip', 'dial', 'mech'];
 
-function setColor(obj, hex, op) { (obj.userData.mats || []).forEach(function (m) { m.color.setHex(hex); m.opacity = op; }); obj.traverse(function (o) { if (o.material && o.material.color && !o.isSprite) { o.material.color.setHex(hex); o.material.transparent = true; o.material.opacity = op; } }); }
+function setColor(obj, hex, op) { var hi = hex === COL.on; (obj.userData.mats || []).forEach(function (m) { m.color.setHex(hex); m.opacity = op; }); obj.traverse(function (o) { if (hi) o.layers.enable(1); else o.layers.disable(1); if (o.material && o.material.color && !o.isSprite) { o.material.color.setHex(hex); o.material.transparent = true; o.material.opacity = op; } }); }
 
 // ---------- step state ----------
 var stepT0 = 0;
@@ -208,9 +253,10 @@ function apply() {
   });
   P.gauge.obj.visible = cur === 2;   // gauge only while checking the gap
   P.tag.obj.visible = cur === 0;     // work-order tag only at the scan
-  line.visible = load.visible = cur <= 3;
+  line.visible = load.visible = cur <= 1;
   nums.forEach(function (n) { n.visible = cur === 6; });
   stepT0 = performance.now() / 1000;
+  if (window.focus3d) focus3d(active);
 }
 // Step state lives on the server when connected, so the phone's voice commands ("next", "back", "hide", "show")
 // move this view too. Offline (opened as a file), it falls back to local state.
@@ -257,7 +303,7 @@ function place(n, k) { // k: 0 = at "from", 1 = home
   else p.obj.rotation.copy(p.homeRot);
 }
 function tick(t) {
-  if (SPIN) table.rotation.y = -0.35 + Math.sin(t * 0.35) * 0.6;    // gentle sway: the front stays readable
+  if (SPIN) pivot.rotation.y = SWAY0 + Math.sin(t * 0.35) * (ZOOM && cur < N ? 0.35 : SWAYA);    // gentle sway: the front stays readable
   var lt = t - stepT0, loop = 2.6, k = ease((lt % loop) / 1.4);
   Object.keys(P).forEach(function (n) { place(n, 1); });
   if (cur >= N) return;
@@ -287,6 +333,65 @@ function tick(t) {
   }
 }
 
+
+// ---------- zoom to the step's part ----------
+// The panel is small, so the camera frames only what this step is about (whole model at the start and the end).
+// The table slides so that part sits at the turntable's centre, and the camera moves in until it fills the space under the text.
+var SWAY0 = -0.35, SWAYA = 0.6; // turntable swing: centre angle and amplitude (radians)
+var ZOOM = q.get('zoom') === '1', TABLE_Y = table.position.y, LOOK = new THREE.Vector3(0, -0.2, 0), CAM0 = camera.position.clone();
+var CAM_DIR = CAM0.clone().sub(LOOK).normalize(), DIST0 = CAM0.distanceTo(LOOK);
+// Fit the WHOLE model once: the turntable sweeps it around the vertical axis, so fit the cylinder it sweeps
+// (radius = farthest point from the axis, height = its full height) into the area between the step text and the footer.
+// That keeps it as big as possible while never leaving its box at any rotation angle.
+var FIT = (function () {
+  // Fit the whole model to the space under the step text: try camera distances and keep the closest one where every
+  // corner of every part stays inside the 3D area at every angle the turntable swings through.
+  Object.keys(P).forEach(function (n) { place(n, 1); });
+  pivot.rotation.y = 0; table.position.set(0, 0, 0); scene.updateMatrixWorld(true);
+  var whole = new THREE.Box3().setFromObject(table), c = whole.getCenter(new THREE.Vector3()), pts = [], bb = new THREE.Box3();
+  table.children.forEach(function (ch) { bb.setFromObject(ch); if (bb.isEmpty() || ch.isSprite) return;
+    for (var i = 0; i < 8; i++) pts.push(new THREE.Vector3(i & 1 ? bb.max.x : bb.min.x, i & 2 ? bb.max.y : bb.min.y, i & 4 ? bb.max.z : bb.min.z).sub(c)); });
+  var X = 0.92, YTOP = 0.46, YBOT = -0.70, v = new THREE.Vector3();               // the 3D area in screen units (-1..1)
+  function fits(d) {
+    camera.position.copy(LOOK).addScaledVector(CAM_DIR, d); camera.lookAt(LOOK.x, LOOK.y + d * 0.02, LOOK.z); camera.updateMatrixWorld(true);
+    for (var a = SWAY0 - SWAYA; a <= SWAY0 + SWAYA + 1e-6; a += 0.1) {
+      var cs = Math.cos(a), sn = Math.sin(a);
+      for (var i = 0; i < pts.length; i++) {
+        var q = pts[i]; v.set(q.x * cs + q.z * sn, q.y + LOOK.y, -q.x * sn + q.z * cs).project(camera);
+        if (v.x < -X || v.x > X || v.y > YTOP || v.y < YBOT) return false;
+      }
+    }
+    return true;
+  }
+  var lo = 2, hi = 80; for (var k = 0; k < 22; k++) { var mid = (lo + hi) / 2; if (fits(mid)) hi = mid; else lo = mid; }
+  table.position.set(0, TABLE_Y, 0);
+  console.log('ARWA 3D: fit distance ' + hi.toFixed(2) + ' (' + pts.length + ' corners, swing ' + SWAYA + ' rad)');
+  return { pos: new THREE.Vector3(-c.x, LOOK.y - c.y, -c.z), dist: hi };
+})();
+var camGoal = { pos: FIT.pos.clone(), dist: FIT.dist }, camNow = { pos: FIT.pos.clone(), dist: FIT.dist };
+function focusPart(names) {
+  if (!ZOOM || !names.length) { camGoal.pos.copy(FIT.pos); camGoal.dist = FIT.dist; return; }
+  var r0 = pivot.rotation.y, p0 = table.position.clone();
+  pivot.rotation.y = 0; table.position.set(0, 0, 0); scene.updateMatrixWorld(true);
+  var box = new THREE.Box3(), tmpB = new THREE.Box3();
+  names.forEach(function (n) { var o = P[n] && P[n].obj; if (o) { place(n, 1); tmpB.setFromObject(o); if (!tmpB.isEmpty()) box.union(tmpB); } });
+  pivot.rotation.y = r0; table.position.copy(p0);
+  if (box.isEmpty()) return;
+  var c = box.getCenter(new THREE.Vector3()), sz = box.getSize(new THREE.Vector3());
+  var w = Math.max(sz.x, sz.z, 1.2), h = Math.max(sz.y, 0.9);
+  // visible height = 0.573 d (32 deg fov); keep the part inside ~55% of the height (text above and below) and ~80% of the width
+  var d = Math.max(h / (0.573 * 0.55), w / (0.573 * camera.aspect * 0.8));
+  camGoal.dist = Math.max(6.4, Math.min(DIST0, d));
+  camGoal.pos.set(-c.x, LOOK.y - c.y, -c.z);
+}
+function camStep() {
+  camNow.pos.lerp(camGoal.pos, 0.08); camNow.dist += (camGoal.dist - camNow.dist) * 0.08;
+  table.position.copy(camNow.pos);
+  camera.position.copy(LOOK).addScaledVector(CAM_DIR, camNow.dist);
+  camera.lookAt(LOOK.x, LOOK.y + camNow.dist * 0.02, LOOK.z); // look a touch high so the model sits centred under the step text
+}
+window.focus3d = focusPart; apply();
+
 // ---------- desktop step list ----------
 document.getElementById('list').innerHTML = STEPS.map(function (s) { return '<li><b>' + s.h + '</b><span>' + s.d + '</span></li>'; }).join('');
 [].forEach.call(document.querySelectorAll('#list li'), function (li, i) { li.onclick = function () { goto(i); }; });
@@ -308,7 +413,8 @@ var last = 0;
 function frame(ms) {
   requestAnimationFrame(frame);
   if (document.hidden || ms - last < 1000 / FPS - 2) return;
-  last = ms; tick(ms / 1000); renderer.render(scene, camera);
+  last = ms; tick(ms / 1000); camStep(); draw();
+  if (!frame.n) { frame.n = 1; console.log('ARWA 3D: first frame drawn'); }
 }
 requestAnimationFrame(frame);
 </script>
