@@ -19,6 +19,8 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -38,9 +40,11 @@ import java.util.concurrent.Executors;
  *  - A grammar forces any speech onto the nearest command, and the glasses' mic hears their own speaker.
  *    So the mic is paused while the voice-over plays (setOutputPlaying, called by the page) and for
  *    ECHO_TAIL_MS after. Without this the voice-over triggered 8 false commands across 5 steps.
- *  - Only a finished, short utterance counts: exactly one command, nothing after it, and at most one
- *    unknown sound before it (a breath or click, e.g. "[unk] mute"). Acting on partial guesses was faster
- *    but fired on chatter like "let's go back next week".
+ *  - Commands still fire on partial guesses (fast). Waiting for the finished utterance with a strict
+ *    "one word only" rule was tried and felt worse on the glasses (next/back/mute less responsive).
+ *  - Listening during the voice-over was measured: commands spoken over it were caught 1-23 times in 100
+ *    and the voice-over alone made up to 8 false ones, so the mic stays off while it plays. To mute while
+ *    it talks, tap the touchpad (display.html). "stop" was rejected as a word: "Step 1 of 5" sounds like it.
  * Log: adb logcat -s GlassView
  */
 class VoiceCommands implements RecognitionListener {
@@ -64,6 +68,8 @@ class VoiceCommands implements RecognitionListener {
     private SpeechService speech;
     private boolean appPaused = false, outputPlaying = false;
     private volatile long deafUntil = 0;   // results arriving before this time are echo: ignore them
+    // Commands already sent for the current utterance, in the order they were heard.
+    private final List<String> fired = new ArrayList<>();
 
     VoiceCommands(Context context, Status status) {
         this.context = context.getApplicationContext();
@@ -124,6 +130,7 @@ class VoiceCommands implements RecognitionListener {
     private final Runnable resumeAfterEcho = () -> {
         outputPlaying = false;
         if (recognizer != null) recognizer.reset(); // drop half-heard voice-over audio
+        fired.clear();
         applyPause();
         Log.i(TAG, "voice: voice-over done, listening again");
     };
@@ -138,14 +145,16 @@ class VoiceCommands implements RecognitionListener {
     }
 
     // ---------- recognition ----------
-    // Partial guesses are only logged; a command is sent when the utterance is finished (about half a
-    // second of silence) and passes accept().
+    // Act on partial results (fast). The recognizer re-guesses the whole utterance each time, so compare
+    // the new guess with what was already sent, word by word: a command in a new position, or a different
+    // command in a position already sent (e.g. "next" re-guessed as "back"), is sent. The final result
+    // catches anything the partials missed, then the list resets for the next utterance.
 
-    @Override public void onPartialResult(String json) { }
+    @Override public void onPartialResult(String json) { handle(field(json, "partial"), false); }
 
-    @Override public void onResult(String json) { handle(field(json, "text")); }
+    @Override public void onResult(String json) { handle(field(json, "text"), true); }
 
-    @Override public void onFinalResult(String json) { handle(field(json, "text")); }
+    @Override public void onFinalResult(String json) { handle(field(json, "text"), true); }
 
     @Override public void onError(Exception e) {
         Log.e(TAG, "voice: error", e);
@@ -154,37 +163,40 @@ class VoiceCommands implements RecognitionListener {
 
     @Override public void onTimeout() { Log.i(TAG, "voice: timeout"); }
 
-    private void handle(String text) {
-        if (text == null || text.trim().isEmpty() || text.trim().equals("[unk]")) return;
-        if (System.currentTimeMillis() < deafUntil) { Log.i(TAG, "voice: ignored during voice-over: \"" + text + "\""); return; }
-        String cmd = accept(text);
-        Log.i(TAG, "voice heard: \"" + text + "\"" + (cmd == null ? " → no command" : " → " + cmd));
-        if (cmd != null) send(cmd, text);
+    private void handle(String text, boolean isFinal) {
+        if (System.currentTimeMillis() < deafUntil) {   // the glasses' own voice-over: never a command
+            if (isFinal) fired.clear();
+            return;
+        }
+        List<String> cmds = commandsIn(text);
+        if (!cmds.isEmpty() || isFinal) Log.i(TAG, "voice " + (isFinal ? "final" : "partial") + ": \"" + text + "\"");
+        for (int i = 0; i < cmds.size(); i++) {
+            String cmd = cmds.get(i);
+            if (i >= fired.size()) { fired.add(cmd); send(cmd, text); }
+            else if (!fired.get(i).equals(cmd)) {
+                Log.i(TAG, "voice: re-guessed \"" + fired.get(i) + "\" as \"" + cmd + "\"");
+                fired.set(i, cmd);
+                send(cmd, text);
+            }
+        }
+        if (isFinal) fired.clear();
     }
 
-    /** The one command in a short utterance, or null. "[unk] next" → next; "next [unk]" or "show hide" → null. */
-    static String accept(String text) {
+    private static List<String> commandsIn(String text) {
+        List<String> out = new ArrayList<>();
+        if (text == null) return out;
         String[] w = text.trim().split("\\s+");
-        String cmd = null;
-        int unknownBefore = 0;
         for (int i = 0; i < w.length; i++) {
-            String c = null;
             switch (w[i]) {
-                case "next": case "back": case "show": case "hide": case "repeat": c = w[i]; break;
-                case "mute": c = "mute_toggle"; break;
+                case "next": case "back": case "show": case "hide": case "repeat": out.add(w[i]); break;
+                case "mute": out.add("mute_toggle"); break;
                 case "sound": case "voice":
-                    if (i + 1 < w.length && w[i + 1].equals("on")) { c = "unmute"; i++; }
+                    if (i + 1 < w.length && w[i + 1].equals("on")) { out.add("unmute"); i++; }
                     break;
-                case "[unk]":
-                    if (cmd != null) return null;          // speech after the command: part of a sentence
-                    unknownBefore++;
-                    continue;
                 default: break;
             }
-            if (c == null || cmd != null) return null;     // a stray word, or a second command
-            cmd = c;
         }
-        return unknownBefore <= 1 ? cmd : null;
+        return out;
     }
 
     private static String field(String json, String key) {

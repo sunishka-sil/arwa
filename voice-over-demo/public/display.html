@@ -113,11 +113,13 @@ es.onmessage = function (e) { $('conn').textContent = ''; render(JSON.parse(e.da
 es.onerror = function () { $('conn').textContent = 'reconnecting…'; };
 
 // Keys: touchpad / ring (the GlassView app turns tap into ArrowRight, double tap into ArrowLeft), keyboard.
+// Tap = next, or mute while the voice-over is speaking.
 function send(cmd) { fetch('/cmd', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cmd: cmd, source: 'display keys' }) }); }
 addEventListener('keydown', function (e) {
   unlock();
   var k = e.key;
-  if (['ArrowRight', 'Enter', ' ', 'PageDown'].indexOf(k) >= 0) send('next');
+  // Voice can't be heard over the voice-over (the mic is off while it plays), so a tap then mutes it.
+  if (['ArrowRight', 'Enter', ' ', 'PageDown'].indexOf(k) >= 0) send(speaking ? 'mute' : 'next');
   else if (['ArrowLeft', 'PageUp', 'Backspace'].indexOf(k) >= 0) send('back');
   else if (k === 'r' || k === 'R') send('repeat');
   else if (k === 'h' || k === 'H') send('hide');
