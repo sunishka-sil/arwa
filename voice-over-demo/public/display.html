@@ -15,6 +15,7 @@
   #d { font-size: 5vmin; line-height: 1.35; font-weight: 500; color: #b4b9c2; margin-top: 3vh; }
   #spk { position: absolute; top: 11vh; right: 6vw; font-size: 4.2vmin; color: #22c55e; opacity: 0; }
   #spk.on { opacity: 1; animation: pulse 1s infinite; }
+  #spk.muted { opacity: 1; color: #f59e0b; }
   @keyframes pulse { 50% { opacity: .35; } }
   #dots { position: absolute; bottom: 5vh; left: 0; right: 0; text-align: center; }
   #dots i { display: inline-block; margin: 0 .8vmin; width: 2vmin; height: 2vmin; border-radius: 50%; border: 2px solid #6b7280; }
@@ -36,15 +37,27 @@
 <div id="conn"></div>
 <script>
 // Voice-over: on every step change, play "Step N of M. <title>. <description>".
+// mute: stop now and stay quiet on step changes · unmute: say the current step again · repeat: say it again
+// (even when muted, since it was asked for).
 // Sound: the server's voice (/api/tts, pre-generated, instant), else the glasses app's ARWAGlasses.say,
 // else the browser's speechSynthesis. ?vo=0 turns it off.
 var q = new URLSearchParams(location.search), VO = q.get('vo') !== '0';
 var $ = function (id) { return document.getElementById(id); };
-var audio = new Audio(), spokenKey = null, lastSeq = -1, blocked = false, pendingText = '';
+var audio = new Audio(), spokenKey = null, lastSeq = -1, blocked = false, pendingText = '', muted = false, speaking = false;
 
-function setSpeaking(on) { $('spk').className = on ? 'on' : ''; }
+function indicator() {
+  $('spk').className = speaking ? 'on' : muted ? 'muted' : '';
+  $('spk').textContent = speaking ? '🔊 speaking' : '🔇 muted';
+}
+function setSpeaking(on) { speaking = on; indicator(); }
 audio.onplaying = function () { setSpeaking(true); };
 audio.onended = audio.onpause = function () { setSpeaking(false); };
+function stopAudio() {
+  pendingText = '';
+  try { audio.pause(); } catch (e) {}
+  if (window.speechSynthesis) speechSynthesis.cancel();
+  setSpeaking(false);
+}
 
 function fallback(text) {
   if (window.ARWAGlasses && ARWAGlasses.say) { try { ARWAGlasses.say(text); return; } catch (e) {} }
@@ -55,7 +68,9 @@ function speak(text) {
   pendingText = text;
   if (window.speechSynthesis) speechSynthesis.cancel();
   audio.onerror = function () { setSpeaking(false); fallback(text); };
-  audio.src = '/api/tts?text=' + encodeURIComponent(text);
+  var url = '/api/tts?text=' + encodeURIComponent(text);
+  if (audio.src && audio.src.slice(-url.length) === url) { try { audio.pause(); audio.currentTime = 0; } catch (e) {} } // same line again: rewind
+  else audio.src = url;
   var p = audio.play();
   if (p && p.catch) p.catch(function (e) {
     if (e && e.name === 'NotAllowedError') { blocked = true; $('hint').style.display = 'block'; } // browser wants one tap first
@@ -74,9 +89,12 @@ function render(s) {
   $('dots').innerHTML = s.steps.map(function (_, i) { return '<i class="' + (i < s.step ? 'done' : i === s.step ? 'on' : '') + '"></i>'; }).join('');
   $('stage').className = s.visible ? '' : 'hidden';
 
-  // Speak when the step changes (including the first time), or when someone says "repeat".
-  var repeat = s.last && s.last.cmd === 'repeat' && s.seq !== lastSeq && lastSeq !== -1;
-  if (s.step !== spokenKey || repeat) { spokenKey = s.step; speak(st.speech); }
+  var fresh = s.seq !== lastSeq && lastSeq !== -1, cmd = fresh && s.last ? s.last.cmd : null;
+  if (s.muted && !muted) stopAudio();
+  muted = s.muted; indicator();
+  if (cmd === 'repeat' || cmd === 'unmute') speak(st.speech);                 // asked for: say it now
+  else if (s.step !== spokenKey && !s.muted) speak(st.speech);                // step changed (or first load)
+  spokenKey = s.step;                                                         // while muted, steps pass silently
   lastSeq = s.seq;
 }
 
@@ -94,6 +112,7 @@ addEventListener('keydown', function (e) {
   else if (k === 'r' || k === 'R') send('repeat');
   else if (k === 'h' || k === 'H') send('hide');
   else if (k === 's' || k === 'S') send('show');
+  else if (k === 'm' || k === 'M') send('mute_toggle');
 });
 </script>
 </body>

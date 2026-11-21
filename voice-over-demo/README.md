@@ -4,7 +4,23 @@ Shows the glasses reading each step aloud. When the step changes, the glasses sa
 *"Step 2 of 5. Scan the QR on PDU B2-07. Use the phone to scan the QR tag on the left PDU…"*,
 and show the same title and description on screen.
 
-It's standalone (nothing in the main ARWA app changed) and uses the same commands as `voice-prototype/` on the `voice-commands` branch. If the GlassView app from that branch is on the glasses, you can drive it hands-free with the glasses mic: say "next", "back", "show" or "hide". The touchpad works too: tap = next, double tap = back.
+It's standalone (nothing in the main ARWA app changed). It works together with the glasses app in `voice-prototype/glass-webview` (GlassView): you drive it hands-free with the glasses' own mic, and every step you move to is read aloud automatically. The touchpad works too: tap = next, double tap = back.
+
+## Voice commands
+
+| Say (to the glasses) | What happens |
+|---|---|
+| "next" / "back" | Move a step and read the new step aloud (unless muted) |
+| "repeat" | Read the current step again (even when muted) |
+| "mute" | Stop the voice-over now; later steps change silently |
+| "unmute", "sound on" or "voice on" | Turn the voice-over back on and read the current step |
+| "show" / "hide" | Show or clear the text on the glasses |
+
+**"unmute" on the glasses:** the glasses' offline speech model doesn't know the word "unmute" and always hears it as "mute". We tested this with five different voices. So the glasses send "mute" as a toggle:
+- If the voice-over is muted, saying "unmute" turns it back on, as you'd expect.
+- If the voice-over is already on and you say "unmute", it mutes.
+
+"Sound on" and "voice on" were recognized correctly every time and always unmute. The Mac's Chrome mic and the remote buttons send exact mute / unmute.
 
 ## Run
 
@@ -39,9 +55,9 @@ Edit `steps.json` (title + description per step) and restart the server. The aud
 
 ## Commands
 
-`POST /cmd {"cmd": "next" | "back" | "show" | "hide" | "repeat" | "restart" | "goto", "step": 0}`
+`POST /cmd {"cmd": "next" | "back" | "show" | "hide" | "repeat" | "mute" | "unmute" | "mute_toggle" | "restart" | "goto", "step": 0}`
 
-The display page also takes keys:
+The display page also takes keys (M = mute toggle):
 - → / Enter / Space: next
 - ←: back
 - R: repeat

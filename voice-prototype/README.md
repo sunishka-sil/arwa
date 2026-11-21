@@ -1,6 +1,6 @@
 # Voice command prototype
 
-Hands-free page control on the M6 glasses: say **next**, **back**, **show** or **hide** and the display on the glasses changes. Tested on our glasses: speech recognition runs on the glasses themselves (their own microphone, offline) and commands land in about 15 ms.
+Hands-free page control on the M6 glasses: say **next**, **back**, **show** or **hide** and the display on the glasses changes. The glasses app also recognizes **repeat**, **mute** and **sound on** / **voice on**, which drive the voice-over demo in `../voice-over-demo/`; run that demo's server instead of `voice-test` to get spoken steps. Tested on our glasses: speech recognition runs on the glasses themselves (their own microphone, offline) and commands land in about 15 ms.
 
 The pages are placeholder shapes for now. The plan is to swap in PDF pages / furniture steps and add a voice-over per step.
 

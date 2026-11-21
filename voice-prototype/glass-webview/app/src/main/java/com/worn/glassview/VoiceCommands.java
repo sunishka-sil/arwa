@@ -23,17 +23,24 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * Listens on the glasses' own microphone (offline, Vosk) for "next", "back", "show", "hide"
- * and POSTs each one to the server's /cmd, the same endpoint the phone/Mac remote uses.
+ * Listens on the glasses' own microphone (offline, Vosk) for voice commands and POSTs each one to the
+ * server's /cmd, the same endpoint the phone/Mac remote uses:
+ *   next, back, show, hide      → page / view
+ *   repeat                      → say the current step again
+ *   mute                        → mute_toggle (see below)
+ *   sound on, voice on          → unmute
  *
- * The recognizer only knows these four words (a grammar), which makes it fast and accurate.
+ * The recognizer only knows these phrases (a grammar), which makes it fast and accurate.
+ * "unmute" is not in the small model's vocabulary: it is always heard as "mute" (tested with five voices).
+ * So "mute" is sent as a toggle: saying "unmute" while muted turns the sound back on, as you'd expect.
  * Log: adb logcat -s GlassView
  */
 class VoiceCommands implements RecognitionListener {
     private static final String TAG = MainActivity.TAG;
     private static final float SAMPLE_RATE = 16000f;
     // "[unk]" soaks up other speech so it isn't forced onto one of the commands.
-    private static final String GRAMMAR = "[\"next\", \"back\", \"show\", \"hide\", \"[unk]\"]";
+    private static final String GRAMMAR =
+            "[\"next\", \"back\", \"show\", \"hide\", \"repeat\", \"mute\", \"sound on\", \"voice on\", \"[unk]\"]";
 
     interface Status { void onVoiceStatus(String status); }
 
@@ -130,8 +137,16 @@ class VoiceCommands implements RecognitionListener {
     private static List<String> commandsIn(String text) {
         List<String> out = new ArrayList<>();
         if (text == null) return out;
-        for (String w : text.trim().split("\\s+")) {
-            if (w.equals("next") || w.equals("back") || w.equals("show") || w.equals("hide")) out.add(w);
+        String[] w = text.trim().split("\\s+");
+        for (int i = 0; i < w.length; i++) {
+            switch (w[i]) {
+                case "next": case "back": case "show": case "hide": case "repeat": out.add(w[i]); break;
+                case "mute": out.add("mute_toggle"); break;
+                case "sound": case "voice":
+                    if (i + 1 < w.length && w[i + 1].equals("on")) { out.add("unmute"); i++; }
+                    break;
+                default: break;
+            }
         }
         return out;
     }

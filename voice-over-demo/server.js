@@ -1,7 +1,7 @@
 // Voice-over demo server. No dependencies: `node server.js` (macOS, for the `say` voice).
 //
 //   /display   → what the glasses show: step title + description, read aloud on every step change
-//   /remote    → buttons (and optional browser mic) for next / back / show / hide / repeat
+//   /remote    → buttons (and optional browser mic) for next / back / show / hide / repeat / mute / unmute
 //
 // Same command interface as voice-prototype/voice-test, so the GlassView glasses app (glasses mic → POST /cmd)
 // drives this demo unchanged. State is pushed to every open page with Server-Sent Events (/events).
@@ -37,26 +37,30 @@ const STEPS = data.steps.map((s, i, all) => ({
 }));
 
 // ---------- state ----------
-let state = { title: data.title, steps: STEPS, step: 0, visible: true, last: null, seq: 0 };
+let state = { title: data.title, steps: STEPS, step: 0, visible: true, muted: false, last: null, seq: 0 };
 const clients = new Set();
 function broadcast() {
   const msg = 'data: ' + JSON.stringify(state) + '\n\n';
   for (const res of clients) res.write(msg);
 }
 function apply(cmd, source) {
+  // The glasses' offline recognizer hears "unmute" as "mute", so it sends mute_toggle (see VoiceCommands.java).
+  if (cmd === 'mute_toggle') cmd = state.muted ? 'unmute' : 'mute';
   switch (cmd) {
     case 'next': state.step = Math.min(STEPS.length - 1, state.step + 1); state.visible = true; break;
     case 'back': state.step = Math.max(0, state.step - 1); state.visible = true; break;
     case 'goto': break; // handled by caller
     case 'show': state.visible = true; break;
     case 'hide': state.visible = false; break;
-    case 'repeat': break; // the display replays the current step
+    case 'repeat': break; // the display replays the current step (even when muted: it was asked for)
+    case 'mute': state.muted = true; break;
+    case 'unmute': state.muted = false; break; // the display says the current step again
     case 'restart': state.step = 0; state.visible = true; break;
     default: return false;
   }
   state.seq++;
   state.last = { cmd, source: source || 'unknown', at: Date.now() };
-  console.log(new Date().toLocaleTimeString(), cmd.padEnd(7), '→ step', state.step + 1, state.visible ? '' : '(hidden)', '·', state.last.source);
+  console.log(new Date().toLocaleTimeString(), cmd.padEnd(7), '→ step', state.step + 1, state.visible ? '' : '(hidden)', state.muted ? '(muted)' : '', '·', state.last.source);
   broadcast();
   return true;
 }
