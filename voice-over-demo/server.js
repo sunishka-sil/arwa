@@ -55,7 +55,7 @@ function apply(cmd, source) {
     case 'repeat': break; // the display replays the current step (even when muted: it was asked for)
     case 'mute': state.muted = true; break;
     case 'unmute': state.muted = false; break; // the display says the current step again
-    case 'restart': state.step = 0; state.visible = true; break;
+    case 'restart': state.step = 0; state.visible = true; state.muted = false; break;
     default: return false;
   }
   state.seq++;

@@ -49,9 +49,13 @@ function indicator() {
   $('spk').className = speaking ? 'on' : muted ? 'muted' : '';
   $('spk').textContent = speaking ? '🔊 speaking' : '🔇 muted';
 }
-function setSpeaking(on) { speaking = on; indicator(); }
+// Tell the glasses app while audio plays, so its mic ignores the speaker (no echo commands).
+function setSpeaking(on) {
+  if (on !== speaking && window.ARWAGlasses && ARWAGlasses.voiceOver) { try { ARWAGlasses.voiceOver(on); } catch (e) {} }
+  speaking = on; indicator();
+}
 audio.onplaying = function () { setSpeaking(true); };
-audio.onended = audio.onpause = function () { setSpeaking(false); };
+audio.onended = audio.onpause = audio.onerror = function () { setSpeaking(false); };
 function stopAudio() {
   pendingText = '';
   try { audio.pause(); } catch (e) {}
@@ -96,6 +100,12 @@ function render(s) {
   else if (s.step !== spokenKey && !s.muted) speak(st.speech);                // step changed (or first load)
   spokenKey = s.step;                                                         // while muted, steps pass silently
   lastSeq = s.seq;
+}
+
+// Opening the display (the glasses app starting) begins the demo at step 1, unmuted.
+// The Mac preview (?preview=1) only watches.
+if (q.get('preview') !== '1' && q.get('restart') !== '0') {
+  fetch('/cmd', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cmd: 'restart', source: 'display opened' }) });
 }
 
 var es = new EventSource('/events');

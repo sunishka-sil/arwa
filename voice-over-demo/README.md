@@ -22,6 +22,12 @@ It's standalone (nothing in the main ARWA app changed). It works together with t
 
 "Sound on" and "voice on" were recognized correctly every time and always unmute. The Mac's Chrome mic and the remote buttons send exact mute / unmute.
 
+**Things to know when using it:**
+- **The mic is off while the voice-over plays.** The glasses' mic hears their own speaker. The recognizer only knows the command words, so it turns that speech into commands: in testing, the 5 step recordings caused 8 false commands, and the steps kept changing on their own. So the glasses ignore the mic while a step is being read, plus half a second after. Wait for it to finish before speaking, or tap the touchpad.
+- **Say each command on its own.** A command counts only when it's the only word you say: a short sound before it is fine, but nothing after it. Sentences like "let's go back next week" are ignored. Tested offline: 44 of 45 spoken commands accepted, 0 false commands from the voice-over, 0 of 7 chatter sentences.
+- **About half a second of delay.** The glasses wait for you to stop talking before acting.
+- **Restarts at step 1.** Opening the display (starting the glasses app) begins the demo at step 1, unmuted. The Mac preview doesn't reset anything.
+
 ## Run
 
 ```bash

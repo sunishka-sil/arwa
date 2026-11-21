@@ -73,6 +73,7 @@ public class MainActivity extends Activity {
             @Override
             public void onPageFinished(WebView view, String loaded) {
                 Log.i(TAG, "loaded " + loaded);
+                if (voice != null) voice.setOutputPlaying(false); // a new page isn't playing anything yet
             }
         });
         web.setWebChromeClient(new WebChromeClient() {
@@ -205,6 +206,8 @@ public class MainActivity extends Activity {
     class Bridge {
         @JavascriptInterface public String device() { return "M6"; }
         @JavascriptInterface public String voiceStatus() { return voiceStatus; }
+        /** The page tells us when its voice-over audio plays, so the mic doesn't hear the speaker. */
+        @JavascriptInterface public void voiceOver(boolean playing) { if (voice != null) voice.setOutputPlaying(playing); }
         @JavascriptInterface public void log(String msg) { Log.i(TAG, "page: " + msg); }
         @JavascriptInterface public void reload() { handler.post(() -> web.loadUrl(url)); }
     }

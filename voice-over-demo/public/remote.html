@@ -51,7 +51,7 @@
 
   <div class="card">
     <div class="row"><h2>Glasses view</h2><label><input type="checkbox" id="sound"> Play voice-over on this Mac too</label></div>
-    <iframe id="preview" src="/display?vo=0" title="Glasses view"></iframe>
+    <iframe id="preview" src="/display?vo=0&preview=1" title="Glasses view"></iframe>
   </div>
 
   <div class="card">
@@ -78,7 +78,7 @@ function send(cmd, source, extra) {
 document.querySelectorAll('[data-cmd]').forEach(function (b) { b.onclick = function () { send(b.dataset.cmd); }; });
 
 // Preview: muted by default so it doesn't talk over the glasses.
-$('sound').onchange = function () { $('preview').src = this.checked ? '/display' : '/display?vo=0'; };
+$('sound').onchange = function () { $('preview').src = this.checked ? '/display?preview=1' : '/display?vo=0&preview=1'; };
 
 var es = new EventSource('/events'), lastSeq = -1;
 es.onmessage = function (e) {
