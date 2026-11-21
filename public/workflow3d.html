@@ -32,7 +32,13 @@
   body.boxed #hud .d { font-size: 22px; margin-top: 4px; }
   body.boxed #part { font-size: 22px; bottom: 9%; right: 3%; left: 3%; }
   body.boxed #foot { font-size: 18px; bottom: 2%; left: 3%; right: 3%; }
-  body.boxed #dots i { width: 16px; height: 16px; }
+  /* Progress bar (replaces the dots): share of the job reached, with the percentage beside it. */
+  #dots { align-items: center; gap: 10px; }
+  #dots .pbar { display: block; width: 150px; height: 8px; border: 1.5px solid #6b7280; border-radius: 6px; overflow: hidden; }
+  #dots .pbar b { display: block; height: 100%; background: var(--on); transition: width .3s; }
+  #dots .pct { font: 700 14px system-ui; color: var(--on); }
+  body.boxed #dots .pbar { width: 220px; height: 14px; border-radius: 8px; }
+  body.boxed #dots .pct { font-size: 22px; }
   body.boxed #widget { font-size: 26px; }
   body.boxed #frame { position: absolute; top: 0; right: 0; bottom: 0; left: 0; }
   body.desk { overflow: auto; background: #0b0f14; color: #e5e7eb; }
@@ -88,6 +94,12 @@
     <div class="keys">Keys: → / Enter / Space = next, ← = back. Click the glasses view to advance. Click a step to jump.</div>
   </div>
 </div>
+<script>function arwaLog(t) { try { console.log(t); new Image().src = "/api/log?m=" + encodeURIComponent(t); } catch (e) {} }
+arwaLog("ARWA page: loaded " + location.pathname + " " + innerWidth + "x" + innerHeight);
+// Any script error is shown on the glasses (visible in the mirror) and printed in the laptop's npm start window.
+window.onerror = function (m, src, line, col) { var t = "ARWA page error: " + m + " (" + String(src).split("/").pop() + ":" + line + ":" + col + ")"; arwaLog(t);
+  var d = document.getElementById("err") || document.body.appendChild(document.createElement("div")); d.id = "err";
+  d.style.cssText = "position:fixed;left:4%;right:4%;bottom:4%;color:#fff;font:600 18px system-ui;z-index:99;white-space:normal"; d.textContent = t; };</script>
 <script src="/hud-layout.js"></script>
 <script src="/workflow-steps.js"></script>
 <script src="/widget.js"></script>
@@ -123,9 +135,9 @@ try {
   var ctx = glCanvas.getContext('webgl', { antialias: false, alpha: false, failIfMajorPerformanceCaveat: false, preserveDrawingBuffer: false }) || glCanvas.getContext('experimental-webgl', { antialias: false, alpha: false });
   if (!ctx) throw new Error('getContext("webgl") returned null');
   renderer = new THREE.WebGLRenderer({ canvas: glCanvas, context: ctx, antialias: false, powerPreference: 'default' });
-  console.log('ARWA 3D: WebGL OK · ' + glInfo(glCanvas) + ' · three r' + THREE.REVISION);
+  arwaLog('ARWA 3D: WebGL OK · ' + glInfo(glCanvas) + ' · three r' + THREE.REVISION);
 } catch (e) {
-  NOGL = true; console.error('ARWA 3D: WebGL FAILED, text only · ' + e.message);
+  NOGL = true; arwaLog('ARWA 3D: WebGL FAILED, text only · ' + e.message);
   document.body.classList.add('nogl');
   renderer = { domElement: document.createElement('canvas'), setPixelRatio: function () {}, setClearColor: function () {}, setSize: function () {}, render: function () {}, clear: function () {} };
 }
@@ -250,7 +262,8 @@ function apply() {
   document.getElementById('h').textContent = done ? '✓ ' + JOB.done : s.h;
   document.getElementById('d').textContent = done ? 'All 8 steps logged · remove your lock' : s.d;
   document.getElementById('part').textContent = done ? '' : '● ' + s.part;
-  document.getElementById('dots').innerHTML = STEPS.map(function (_, i) { return '<i class="' + (i < cur ? 'done' : i === cur ? 'on' : '') + '"></i>'; }).join('');
+  var pct = Math.round(Math.min(cur + 1, N) / N * 100); // step 3 of 8 = 38%, complete = 100%
+  document.getElementById('dots').innerHTML = '<span class="pbar"><b style="width:' + pct + '%"></b></span><span class="pct">' + pct + '%</span>';
   [].forEach.call(document.querySelectorAll('#list li'), function (li, i) { li.className = i < cur ? 'done' : i === cur ? 'on' : ''; });
   var active = done ? [] : s.parts;
   Object.keys(P).forEach(function (n) {
@@ -287,9 +300,11 @@ function goto(i) { if (send('goto', { step: i })) return; cur = i; apply(); }
 if (window.ARWA && location.protocol.indexOf('http') === 0) {
   link = ARWA.connect({ role: 'electrical_tech', device: DESK ? 'phone' : 'glasses', name: 'workflow',
     onStatus: function (st) { live = st === 'live'; },
-    onEvent: function (e) {
+    onEvent: function onEvent(e) {
       if (e.type === 'widget') return showWidget(e);
       if (e.type !== 'wf') return;
+      // Opened directly on this page: make this the job. Later, if the phone switches job, follow it to that job's page.
+      if (!onEvent.seen) { onEvent.seen = true; if (e.job !== PAGE_JOB) { console.log('ARWA page: switching laptop job to ' + PAGE_JOB); link.send('wf', { cmd: 'job', job: PAGE_JOB }); return; } }
       if (e.job && e.job !== PAGE_JOB && window.WF_JOBS[e.job]) { location.replace(window.WF_JOBS[e.job].page + location.search); return; } // phone switched job
       var moved = e.step !== cur; cur = e.step; setHidden(!!e.hidden); apply();
       if (e.cmd && Date.now() - e.ts < 3000) flashCmd({ next: '▸ Next', back: '◂ Back', hide: 'View hidden', show: 'View shown', goto: '▸ Step ' + (e.step + 1), restart: '↺ Restart' }[e.cmd] || '');
@@ -367,7 +382,7 @@ var FIT = (function () {
   }
   var lo = 2, hi = 80; for (var k = 0; k < 22; k++) { var mid = (lo + hi) / 2; if (fits(mid)) hi = mid; else lo = mid; }
   table.position.set(0, TABLE_Y, 0);
-  console.log('ARWA 3D: fit distance ' + hi.toFixed(2) + ' (' + pts.length + ' corners, swing ' + SWAYA + ' rad)');
+  arwaLog('ARWA 3D: fit distance ' + hi.toFixed(2) + ' (' + pts.length + ' corners, swing ' + SWAYA + ' rad)');
   return { pos: new THREE.Vector3(-c.x, LOOK.y - c.y, -c.z), dist: hi };
 })();
 var camGoal = { pos: FIT.pos.clone(), dist: FIT.dist }, camNow = { pos: FIT.pos.clone(), dist: FIT.dist };
@@ -416,7 +431,7 @@ function frame(ms) {
   requestAnimationFrame(frame);
   if (document.hidden || ms - last < 1000 / FPS - 2) return;
   last = ms; tick(ms / 1000); camStep(); draw();
-  if (!frame.n) { frame.n = 1; console.log('ARWA 3D: first frame drawn'); }
+  if (!frame.n) { frame.n = 1; arwaLog('ARWA 3D: first frame drawn'); }
 }
 requestAnimationFrame(frame);
 </script>

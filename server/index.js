@@ -256,6 +256,9 @@ async function handler(req, res) {
       return send(200, JSON.stringify(await handleAsk(b.text, 'http')));
     }
     if (url.pathname === '/api/ask/context') return send(200, JSON.stringify({ engine: process.env.ANTHROPIC_API_KEY ? 'claude:' + assistant.MODEL : 'rules', context: assistant.contextText(askContext()) }));
+    if (url.pathname === '/api/log') { // glasses pages report their errors here, so they show in this npm start window
+      console.log('[glasses] ' + String(url.searchParams.get('m') || '').slice(0, 400)); return send(204, '');
+    }
     if (url.pathname === '/api/wf') { // GET state, or POST {"cmd":"next"} from any device that can do HTTP
       if (req.method === 'POST') { const b = JSON.parse((await readBody(req)) || '{}'); wfCommand(String(b.cmd || ''), { step: b.step, job: b.job, by: 'http', heard: b.heard }); }
       return send(200, JSON.stringify(wf));

@@ -23,8 +23,23 @@ window.WF_MCCB = [
   { k: 'COVER', h: 'Close cover, torque 1 → 3 → 2 → 4', d: 'Cross pattern, 1.2 N·m each', part: 'Cover screws', parts: ['cover', 'w0', 'w1', 'w2', 'w3'], spec: { label: 'Cover torque', value: '1.2', unit: 'N·m' } },
   { k: 'CHECK', h: 'Operate, test trip, then label', d: 'ON → OFF → ON ×3, press TEST, reset, apply label', part: 'Handle + TEST button', parts: ['handle', 'test', 'label'], spec: { label: 'Operations', value: '3', unit: 'cycles' }, hazard: 'Bench test only: never energize at the station' },
 ];
+
+// Third job: water pump + timing belt on a 2008-2012 Honda Accord 3.5 L V6 (J35, belt-driven pump behind the timing covers).
+// Crank bolt 245 N·m is Honda's figure for the J35; check the other values in the Honda service manual before real use.
+window.WF_PUMP = [
+  { k: 'PREP', h: 'Battery off, drain the coolant', d: 'Engine cold. Negative terminal off, open the drain', part: 'Coolant drain', parts: ['drain'], spec: { label: 'Coolant', value: '~6', unit: 'L' }, hazard: 'Engine must be cold: hot coolant scalds' },
+  { k: 'ACC. BELT', h: 'Release tensioner, belt off', d: 'Swing the auto-tensioner, slip the accessory belt off', part: 'Accessory belt', parts: ['sbelt'], spec: { label: 'Accessory belt', value: '1', unit: 'off' } },
+  { k: 'MOUNT', h: 'Support engine, remove the mount', d: 'Jack + wood block under the oil pan, mount off', part: 'Engine mount + jack', parts: ['jack', 'mount'], spec: { label: 'Mount', value: 'off', unit: '' }, hazard: 'Engine supported before the mount comes off' },
+  { k: 'COVERS', h: 'Crank bolt, pulley, covers off', d: 'Holder on the pulley, then upper + lower covers', part: 'Crank bolt + covers', parts: ['bolt', 'balancer', 'covers'], spec: { label: 'Crank bolt', value: '19', unit: 'mm' } },
+  { k: 'TDC', h: 'Turn to TDC, line up 3 marks', d: 'Crank mark + both cam pulley marks', part: 'Cam + crank marks', parts: ['camR', 'camF', 'crank', 'marks'], spec: { label: 'Marks aligned', value: '3', unit: 'of 3' }, hazard: 'Interference engine: never turn a cam alone' },
+  { k: 'BELT OFF', h: 'Pin the tensioner, belt off', d: 'Lock pin in the auto-tensioner, slip the belt off', part: 'Timing belt + tensioner', parts: ['belt', 'tens', 'pin'], spec: { label: 'Tensioner', value: 'pinned', unit: '' } },
+  { k: 'WATER PUMP', h: 'Swap the water pump', d: 'Bolts out, new pump + O-ring, criss-cross torque', part: 'Water pump', parts: ['pump'], spec: { label: 'Pump bolts', value: '12', unit: 'N·m' } },
+  { k: 'NEW BELT', h: 'New belt on, pull the pin, check', d: 'Crank first, counter-clockwise. 2 turns, marks again', part: 'New timing belt', parts: ['belt', 'pin', 'marks', 'camR', 'camF', 'crank'], spec: { label: 'Crank turns', value: '2', unit: 'then recheck' }, hazard: 'Marks must line up again before going on' },
+  { k: 'REFIT', h: 'Refit, torque crank bolt, refill', d: 'Covers, pulley, mount, belt. Refill + bleed air', part: 'Crank bolt', parts: ['bolt', 'balancer', 'covers', 'mount', 'sbelt'], spec: { label: 'Crank bolt', value: '245', unit: 'N·m' } },
+];
 window.WF_JOBS = {
   coupling: { title: 'Mount motor to pump: jaw coupling', short: 'Motor coupling', page: 'workflow3d.html', done: 'Motor mounted', steps: window.WF_STEPS },
+  pump: { title: 'Water pump + timing belt: 2008–2012 Accord V6', short: 'Engine water pump', page: 'pump3d.html', done: 'Water pump replaced', steps: window.WF_PUMP },
   mccb: { title: 'Assemble a 3-pole MCCB (100 A)', short: 'Circuit breaker', page: 'mccb3d.html', done: 'Breaker assembled', steps: window.WF_MCCB },
 };
 if (typeof module !== 'undefined') module.exports = window.WF_STEPS;
