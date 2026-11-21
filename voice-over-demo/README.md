@@ -12,23 +12,34 @@ It's standalone (nothing in the main ARWA app changed). It works together with t
 |---|---|
 | "next" / "back" | Move a step and read the new step aloud (unless muted) |
 | "repeat" | Read the current step again (even when muted) |
-| "mute" | Stop the voice-over now; later steps change silently |
-| "unmute", "sound on" or "voice on" | Turn the voice-over back on and read the current step |
+| "voice off" | Stop the voice-over now; later steps change silently |
+| "voice on" | Turn the voice-over back on and read the current step |
 | "show" / "hide" | Show or clear the text on the glasses |
 
-**"unmute" on the glasses:** the glasses' offline speech model doesn't know the word "unmute" and always hears it as "mute". We tested this with five different voices. So the glasses send "mute" as a toggle:
-- If the voice-over is muted, saying "unmute" turns it back on, as you'd expect.
-- If the voice-over is already on and you say "unmute", it mutes.
+"Sound off" / "sound on" also work. A touchpad tap while the voice-over is talking mutes it; otherwise a tap means "next".
 
-"Sound on" and "voice on" were recognized correctly every time and always unmute. The Mac's Chrome mic and the remote buttons send exact mute / unmute.
+**Why "voice off" and not "mute":** the glasses' offline speech model doesn't know "unmute" (it always hears "mute"), and "mute" was unreliable on the glasses. "Voice off" and "voice on" were each recognized 6 times out of 6 across six test voices, and never confused with each other. They act once you finish the phrase, so a half-heard "voice o…" can't flip the wrong way.
 
-**Things to know when using it:**
-- **The mic is off while the voice-over plays.** The glasses' mic hears their own speaker, and the recognizer turns that speech into commands. Before this fix, the steps kept changing on their own.
-  - We measured voice commands spoken *over* the voice-over: they were caught only 1–23 times in 100, and the voice-over alone triggered up to 8 false commands.
-  - So voice commands work between steps, not while a step is being read.
-- **To mute while it's talking, tap the touchpad.** A tap during the voice-over mutes it. When it's quiet, a tap still means "next".
-- **Commands react as you speak.** They fire on the recognizer's first guess, which keeps them responsive. We tried waiting until you finish speaking, with a stricter rule, and it felt worse on the glasses.
-- **Restarts at step 1.** Opening the display (starting the glasses app) begins the demo at step 1, unmuted. The Mac preview doesn't reset anything.
+### Interrupting the voice-over
+
+You can talk over the voice-over, but **say the command firmly**. The glasses' mic also hears their own speaker, and the recognizer turns that speech into commands: before this check, the steps kept changing on their own. The M6 has no echo canceller, so the app uses loudness instead.
+
+While the voice-over plays, a command only counts if the mic is clearly louder than the speaker's echo. It needs both:
+- at least **2.5×** the echo level measured over the last 2 s;
+- at least **2500** in absolute level.
+
+What we measured on the M6:
+
+| Sound at the mic | Peak vs echo level | Absolute peak |
+|---|---|---|
+| Speaker echo alone | up to 2.86× | up to 2439 |
+| A command spoken over the voice-over | about 4× | 3000–4000 |
+
+These thresholds are `BARGE_RATIO` / `BARGE_MIN` in `VoiceCommands.java`. If interrupting is too hard, lower them. If the voice-over starts triggering itself, raise them. The log shows the levels: `adb logcat -s GlassView`, then look for "mic during voice-over".
+
+When nothing is playing, commands react to the recognizer's first guess (fast), as before.
+
+**Restarts at step 1.** Opening the display (starting the glasses app) begins the demo at step 1, unmuted. The Mac preview doesn't reset anything.
 
 ## Run
 
@@ -63,7 +74,7 @@ Edit `steps.json` (title + description per step) and restart the server. The aud
 
 ## Commands
 
-`POST /cmd {"cmd": "next" | "back" | "show" | "hide" | "repeat" | "mute" | "unmute" | "mute_toggle" | "restart" | "goto", "step": 0}`
+`POST /cmd {"cmd": "next" | "back" | "show" | "hide" | "repeat" | "mute" | "unmute" | "mute_toggle" | "restart" | "goto", "step": 0}` ("voice off" sends mute, "voice on" sends unmute)
 
 The display page also takes keys (M = mute toggle):
 - → / Enter / Space: next

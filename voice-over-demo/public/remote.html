@@ -37,7 +37,7 @@
 <body>
 <main>
   <div class="row"><h1>Voice-over demo</h1><span><span id="muteState"></span> <span id="conn"></span></span></div>
-  <p class="sub">The glasses read each step aloud (title + description) when it changes. Say “next”, “back”, “repeat”, “mute”, “unmute” (or “sound on”), “show”, “hide” to the glasses, use the touchpad, or the buttons below.</p>
+  <p class="sub">The glasses read each step aloud (title + description) when it changes. Say “next”, “back”, “repeat”, “voice off”, “voice on”, “show”, “hide” to the glasses (also while it's talking: say it firmly), use the touchpad, or the buttons below.</p>
 
   <div class="btns">
     <button data-cmd="back">◂ Back</button>
@@ -61,7 +61,7 @@
 
   <div class="card">
     <div class="row"><h2>Mic on this computer (optional)</h2><button id="mic">🎤 Start listening</button></div>
-    <div id="heard">For testing without the glasses: say “next”, “back”, “repeat”, “mute”, “unmute”, “hide”, “show”.</div>
+    <div id="heard">For testing without the glasses: say “next”, “back”, “repeat”, “voice off”, “voice on”, “hide”, “show”.</div>
   </div>
 
   <div class="card">
@@ -103,7 +103,7 @@ function esc(t) { return String(t).replace(/[&<>]/g, function (c) { return { '&'
 // Chrome's recognizer knows "unmute", so the Mac mic sends exact mute / unmute (the glasses send a toggle).
 var WORDS = { next: 'next', necks: 'next', back: 'back', show: 'show', hide: 'hide', hyde: 'hide', repeat: 'repeat', again: 'repeat', mute: 'mute', unmute: 'unmute' };
 var SR = window.SpeechRecognition || window.webkitSpeechRecognition, rec = null, listening = false, fired = {};
-function words(t) { return t.toLowerCase().replace(/[^a-z\s]/g, ' ').replace(/\b(un|an) mute\b/g, 'unmute').replace(/\b(sound|voice) on\b/g, 'unmute').split(/\s+/).map(function (w) { return WORDS[w]; }).filter(Boolean); }
+function words(t) { return t.toLowerCase().replace(/[^a-z\s]/g, ' ').replace(/\b(un|an) mute\b/g, 'unmute').replace(/\b(sound|voice) on\b/g, 'unmute').replace(/\b(sound|voice) off\b/g, 'mute').split(/\s+/).map(function (w) { return WORDS[w]; }).filter(Boolean); }
 function start() {
   rec = new SR(); rec.lang = 'en-US'; rec.continuous = true; rec.interimResults = true; fired = {};
   rec.onresult = function (e) {
