@@ -1,0 +1,5 @@
+{
+  "_comment": "Spec values the panel must match before restart. Vision reads the panel; this file decides pass/fail (deterministic, not the model).",
+  "B": { "recipe": "B", "speed_rpm": 120, "heater_C": 180, "tolerance": { "speed_rpm": 2, "heater_C": 3 } },
+  "A": { "recipe": "A", "speed_rpm": 100, "heater_C": 160, "tolerance": { "speed_rpm": 2, "heater_C": 3 } }
+}

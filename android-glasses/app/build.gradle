@@ -1,0 +1,19 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'com.arwa.glasses'
+    compileSdk 34
+    defaultConfig {
+        applicationId 'com.arwa.glasses'
+        minSdk 24          // M6 glasses run Android 9 = API 28, so anything <= 28 is fine
+        targetSdk 28       // match the glasses' Android 9 so no newer-Android behaviour kicks in
+        versionCode 1
+        versionName '0.1'
+    }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+    // No MicroLumin SDK here on purpose: the kit has no glasses-side SDK (XRAppManager .aar is missing).
+    // Everything uses plain Android APIs: WebView, Camera, TextToSpeech, SpeechRecognizer, key events.
+}
+
+dependencies {
+}

@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ARWA Starter</title>
+<style>:root{color-scheme:dark}body{background:#0b0f14;color:#e5e7eb;font:17px system-ui;max-width:560px;margin:auto;padding:16px}a{display:block;padding:14px;margin:8px 0;border-radius:10px;background:#111827;color:#e5e7eb;text-decoration:none}a small{display:block;opacity:.6}</style></head>
+<body><h2>ARWA starter</h2>
+<a href="/ui.html">Glasses UI prototype (all screens, simulated)<small>Cell 3 changeover + nuclear clearance. ?hud=1 on the glasses</small></a>
+<a href="/glasses.html">Glasses view<small>Black = transparent on waveguides. ?mono=1 for monochrome, ?scale=1.3</small></a>
+<a href="/anim3d.html?scene=bolts">3D: bolt star pattern<small>three.js wireframe, ring/tap = next bolt. ?bolts=6, ?nm=40, ?mono=1</small></a>
+<a href="/anim3d.html?scene=arrow">3D: wayfinding arrow<small>?deg=-35&amp;label=Machine 3A</small></a>
+<a href="/workflow3d.html">3D workflow: motor to pump coupling<small>8 steps, rotating model, active part green. Wide window shows the step list</small></a>
+<a href="/mccb3d.html">3D workflow: circuit breaker (MCCB) assembly<small>8 steps at one line station. Switch jobs from the phone page</small></a>
+<a href="/voice.html">Phone voice remote<small>Say next / back / hide / show; the glasses follow. Needs https://&lt;laptop-ip&gt;:8443</small></a>
+<a href="/phone.html">Phone view (technician)<small>QR scan with halo, confirm step, call expert. Camera needs the https :8443 URL</small></a>
+<a href="/phone.html?role=remote_expert&name=expert">Remote expert view<small>Sees the same asset + step, gets the call</small></a>
+<a href="/phone.html?role=supervisor&name=sup">Supervisor view<small>Status + alarms only (router role filter)</small></a>
+<a href="/cv.html">Camera: check panel + hazard zone<small>Claude reads the panel vs recipe; on-device hand tracking for the danger zone. Use the https :8443 URL</small></a>
+<a href="/panel.html">Fake machine panel (tablet)<small>Machine 3A HMI to point the camera at</small></a>
+<a href="/qr.html">Print QR tags</a>
+<a href="/study.html">Timing study (with vs without)</a>
+<a href="/api/markers?device=glasses">Raw marker JSON (glasses)</a>
+<a href="/api/state">Raw state model</a>
+</body></html>

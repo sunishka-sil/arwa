@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Machine 3A Panel</title>
+<style>
+  /* A fake machine HMI to put on a tablet (or print). It is the machine's own panel: ARWA only reads it. */
+  body { margin:0; background:#1b2128; color:#f1f5f9; font:600 18px system-ui,sans-serif; display:grid; place-items:center; min-height:100vh; }
+  .hmi { width:min(94vw,720px); background:#0e1318; border:6px solid #39424d; border-radius:18px; padding:18px; display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; }
+  .tag { grid-column:1/-1; display:flex; justify-content:space-between; align-items:center; font-size:22px; }
+  .tag b { background:#f8fafc; color:#000; padding:4px 12px; border-radius:6px; font-size:28px; }
+  .cell { background:#18212b; border-radius:10px; padding:12px; text-align:center; }
+  .cell small { display:block; font-size:14px; color:#94a3b8; letter-spacing:.08em; }
+  .val { font:700 44px ui-monospace,monospace; color:#7dd3fc; }
+  .cell button { font:700 20px system-ui; width:44px; height:40px; border-radius:8px; border:0; margin:4px; background:#334155; color:#fff; }
+  .fault { color:#fb923c; } .ok { color:#4ade80; }
+  .reset { background:#b91c1c !important; width:auto !important; padding:0 18px; }
+</style>
+</head>
+<body>
+<div class="hmi">
+  <div class="tag"><span>LINE 2 · CELL 3</span><b>MACHINE 3A</b></div>
+  <div class="cell"><small>RECIPE</small><div class="val" id="recipe">A</div><button data-k="recipe" data-d="-1">◀</button><button data-k="recipe" data-d="1">▶</button></div>
+  <div class="cell"><small>STATUS</small><div class="val fault" id="status">E-17</div><button class="reset" id="reset">RESET</button></div>
+  <div class="cell"><small>SPEED rpm</small><div class="val" id="speed_rpm">210</div><button data-k="speed_rpm" data-d="-10">−</button><button data-k="speed_rpm" data-d="10">+</button></div>
+  <div class="cell"><small>HEATER °C</small><div class="val" id="heater_C">160</div><button data-k="heater_C" data-d="-5">−</button><button data-k="heater_C" data-d="5">+</button></div>
+  <div class="cell"><small>MODE</small><div class="val">AUTO</div></div>
+  <div class="cell"><small>CYCLES</small><div class="val">4,812</div></div>
+</div>
+<script>
+  const st = { recipe: 'A', speed_rpm: 210, heater_C: 160 };
+  const R = ['A', 'B', 'C'];
+  document.querySelectorAll('[data-k]').forEach((b) => b.onclick = () => {
+    const k = b.dataset.k, d = Number(b.dataset.d);
+    st[k] = k === 'recipe' ? R[(R.indexOf(st[k]) + d + R.length) % R.length] : st[k] + d;
+    document.getElementById(k).textContent = st[k];
+  });
+  document.getElementById('reset').onclick = () => { const s = document.getElementById('status'); s.textContent = 'READY'; s.className = 'val ok'; };
+</script>
+</body>
+</html>

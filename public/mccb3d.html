@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>MCCB Workflow 3D</title>
+<style>
+  /* Glasses rule: black = see-through. Thin bright lines, the active part green, the rest dim. */
+  :root { --fg: #fff; --dim: #9ca3af; --on: #22c55e; --line: #1f2937; }
+  html, body { margin: 0; height: 100%; background: #000; color: var(--fg); font: 600 20px/1.25 system-ui, sans-serif; overflow: hidden; }
+  #wrap { position: relative; width: 100vw; height: 100vh; }
+  #view { position: absolute; inset: 0; }
+  canvas { display: block; }
+  #hud { position: absolute; top: 3.5%; left: 5%; right: 5%; pointer-events: none; }
+  #hud .k { font: 600 13px/1 system-ui; letter-spacing: .12em; color: var(--on); }
+  #hud .h { font-size: 1.2em; margin-top: 4px; }
+  #hud .d { font-weight: 500; font-size: .78em; color: var(--dim); margin-top: 4px; }
+  #foot { position: absolute; bottom: 3.5%; left: 5%; right: 5%; display: flex; justify-content: space-between; align-items: center; pointer-events: none; font: 500 13px system-ui; color: #6b7280; }
+  #dots { display: flex; gap: 6px; }
+  #dots i { width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid #4b5563; }
+  #dots i.done { background: #4b5563; }
+  #dots i.on { border-color: var(--on); background: var(--on); }
+  #part { position: absolute; right: 5%; bottom: 11%; font: 600 14px system-ui; color: var(--on); pointer-events: none; text-align: right; }
+
+  /* Desktop preview: the glasses frame at its real 640x480, with the step list beside it. */
+  /* Corner panel on the glasses (hud-layout.js): enlarge text inside the shrunk box. */
+  body.boxed #hud, body.boxed #part, body.boxed #foot { zoom: 1.6; }
+  body.boxed #frame { position: absolute; inset: 0; }
+  body.desk { overflow: auto; background: #0b0f14; color: #e5e7eb; }
+  body.desk #wrap { display: flex; gap: 28px; align-items: flex-start; justify-content: center; padding: 28px 16px; height: auto; width: auto; flex-wrap: wrap; }
+  body.desk #frame { position: relative; width: 640px; max-width: 100%; aspect-ratio: 4 / 3; background: #000; border-radius: 14px; box-shadow: 0 0 0 2px #1f2937, 0 20px 60px rgba(0,0,0,.6); overflow: hidden; }
+  body.desk #view { position: absolute; inset: 0; }
+  #heard { position: absolute; top: 3.5%; right: 5%; font: 700 15px system-ui; color: var(--on); opacity: 0; transition: opacity .2s; pointer-events: none; }
+  #heard.on { opacity: 1; }
+  /* AI "ask" widget: one glanceable answer, bottom-left of the panel, fades after its time. */
+  #widget { position: absolute; left: 5%; bottom: 13%; max-width: 55%; color: var(--on); font-size: 18px; opacity: 0; transition: opacity .25s; pointer-events: none; }
+  #widget.on { opacity: 1; }
+  body.cleared #widget { visibility: hidden; }
+  /* "Hide": clear the wearer's view completely except one faint dot, so they know it's paused, not dead. */
+  body.cleared #view, body.cleared #hud, body.cleared #part, body.cleared #foot { visibility: hidden; }
+  body.cleared::after { content: ''; position: fixed; top: 4%; right: 4%; width: 8px; height: 8px; border-radius: 50%; background: #333; }
+  #side { display: none; }
+  body.desk #side { display: block; width: 340px; max-width: 100%; }
+  #side h1 { font-size: 18px; margin: 0 0 4px; }
+  #side p { font: 400 14px/1.45 system-ui; color: #9ca3af; margin: 0 0 14px; }
+  #side ol { margin: 0; padding: 0; list-style: none; counter-reset: s; }
+  #side li { counter-increment: s; padding: 10px 12px; margin: 0 0 6px; border-radius: 10px; border: 1px solid #1f2937; cursor: pointer; font: 400 14px/1.4 system-ui; }
+  #side li::before { content: counter(s); display: inline-block; width: 22px; height: 22px; line-height: 22px; text-align: center; border-radius: 50%; background: #1f2937; margin-right: 8px; font-weight: 700; font-size: 12px; }
+  #side li b { font-weight: 650; }
+  #side li span { display: block; color: #9ca3af; margin: 4px 0 0 30px; font-size: 13px; }
+  #side li.on { border-color: var(--on); background: rgba(34,197,94,.08); }
+  #side li.on::before { background: var(--on); color: #000; }
+  #side li.done { opacity: .6; }
+  #side .keys { margin-top: 14px; font: 400 13px system-ui; color: #6b7280; }
+  #side .btns { display: flex; gap: 8px; margin-top: 12px; }
+  #side button { flex: 1; font: 600 14px system-ui; padding: 10px; border-radius: 10px; border: 0; background: #1f2937; color: #e5e7eb; cursor: pointer; }
+  #side button.primary { background: #16a34a; color: #fff; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="box">
+  <div id="frame">
+    <div id="view"></div>
+    <div id="hud"><div class="k" id="k"></div><div class="h" id="h"></div><div class="d" id="d"></div></div>
+    <div id="part"></div>
+    <div id="heard"></div>
+    <div id="widget"></div>
+    <div id="foot"><div id="dots"></div><div id="hint">tap ▸ next · hold ◂ back</div></div>
+  </div>
+  </div>
+  <div id="side">
+    <h1>Assemble a 3-pole MCCB (100 A)</h1>
+    <p>MCCB lines are semi-automated; people still handle frame changeovers, configuration (trip settings), accessory fitting and rework. This is that manual station, guided step by step. Values are illustrative.</p><p>What a technician sees on the glasses, one step at a time. The small 3D model keeps rotating; the part you're working on glows green and plays its move.</p>
+    <ol id="list"></ol>
+    <div class="btns"><button id="prev">◂ Back</button><button id="next" class="primary">Next ▸</button></div>
+    <div class="keys">Keys: → / Enter / Space = next, ← = back. Click the glasses view to advance. Click a step to jump.</div>
+  </div>
+</div>
+<script src="/hud-layout.js"></script>
+<script src="/workflow-steps.js"></script>
+<script src="/widget.js"></script>
+<script src="/arwa-client.js"></script>
+<script src="/vendor/three.min.js"></script>
+<script>
+// MCCB (moulded-case circuit breaker) workflow, three.js r149 primitives only (WebGL1, Android 9 WebView safe, no external models).
+// URL: ?step=3 to start at a step, ?spin=0 to stop the turntable, ?mono=1 single-colour waveguide, ?fps=30, ?desk=1 force preview layout.
+var q = new URLSearchParams(location.search);
+var DESK = q.get('desk') === '1' || (q.get('desk') !== '0' && innerWidth >= 1000);
+if (DESK) document.body.classList.add('desk');
+// The M6 is a single-colour (green) display, so inside the glasses app default to brightness levels:
+// active = full + pulsing, done = dim, not yet = faint.
+var MONO = q.get('mono') === '1' || (q.get('mono') !== '0' && !!window.ARWAGlasses);
+if (MONO) document.documentElement.style.setProperty('--on', '#fff');
+var COL = MONO ? { on: 0xffffff, done: 0x5a5a5a, ghost: 0x2a2a2a } : { on: 0x22c55e, done: 0x9ca3af, ghost: 0x374151 };
+var FPS = Number(q.get('fps') || 30), SPIN = q.get('spin') !== '0';
+
+var PAGE_JOB = 'mccb', JOB = window.WF_JOBS[PAGE_JOB];
+var STEPS = JOB.steps;
+var N = STEPS.length, cur = Math.max(0, Math.min(N, Number(q.get('step') || 1) - 1));
+
+// ---------- renderer ----------
+var view = document.getElementById('view');
+var renderer = new THREE.WebGLRenderer({ antialias: DESK, powerPreference: 'low-power' });
+renderer.setPixelRatio(DESK ? Math.min(2, devicePixelRatio || 1) : 1);
+renderer.setClearColor(0x000000, 1);
+view.appendChild(renderer.domElement);
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera(32, 4 / 3, 0.1, 100);
+camera.position.set(0, 1.6, 11.5); camera.lookAt(0, -0.2, 0);
+function size() { var w = view.clientWidth, h = view.clientHeight; renderer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix(); }
+addEventListener('resize', size);
+
+// ---------- parts (all wireframe edges). The breaker stands upright facing you like it would in a panel:
+// X = the 3 poles (left to right), Y = line side on top / load side below, Z = base at the back, cover toward you.
+var table = new THREE.Group(); scene.add(table); table.position.y = -0.55; table.scale.setScalar(0.74);
+var P = {};
+function edgeObj(geo, angle) { var m = new THREE.LineBasicMaterial({ color: COL.ghost, transparent: true, opacity: 1 }); var o = new THREE.LineSegments(new THREE.EdgesGeometry(geo, angle || 20), m); o.userData.mats = [m]; return o; }
+function cylZ(r, len, seg) { var g = new THREE.CylinderGeometry(r, r, len, seg || 20); g.rotateX(Math.PI / 2); return g; }
+function group() { var g = new THREE.Group(); g.userData.mats = []; return g; }
+function add(g, o, x, y, z) { o.position.set(x || 0, y || 0, z || 0); g.add(o); g.userData.mats = g.userData.mats.concat(o.userData.mats || []); return o; }
+function part(name, obj, from, rotFrom) { table.add(obj); P[name] = { obj: obj, home: obj.position.clone(), homeRot: obj.rotation.clone(), from: from || null, rotFrom: rotFrom || null }; return obj; }
+function v(x, y, z) { return new THREE.Vector3(x, y, z); }
+function label(txt, px) {
+  var c = document.createElement('canvas'); c.width = 128; c.height = 64; var g = c.getContext('2d');
+  g.fillStyle = '#22c55e'; g.font = 'bold ' + (px || 44) + 'px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(txt, 64, 34);
+  var s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthTest: false })); s.scale.set(0.84, 0.42, 1); return s;
+}
+var POLES = [-1, 0, 1];
+
+// 1. Moulded base (back shell with 3 pole pockets) + the work-order tag with its QR square
+var base = group(); add(base, edgeObj(new THREE.BoxGeometry(3.0, 4.0, 0.7)), 0, 0, -0.35);
+POLES.forEach(function (x) { add(base, edgeObj(new THREE.BoxGeometry(0.8, 3.0, 0.2)), x, 0, 0.1); });
+part('base', base, v(0, 1.6, -0.6));
+var tag = group(); add(tag, edgeObj(new THREE.BoxGeometry(0.9, 1.2, 0.02)), 0, 0, 0); add(tag, edgeObj(new THREE.BoxGeometry(0.5, 0.5, 0.02)), 0, 0.2, 0.02);
+for (var t = 0; t < 3; t++) add(tag, edgeObj(new THREE.BoxGeometry(0.6, 0.02, 0.02)), 0, -0.25 - t * 0.12, 0.02);
+tag.position.set(-2.3, 0.6, 0.3); tag.rotation.y = 0.35; part('tag', tag, v(-2.3, 1.6, 0.3));
+var line = label('LINE', 30); line.position.set(0, 2.45, 0); table.add(line);
+var load = label('LOAD', 30); load.position.set(0, -2.45, 0); table.add(load);
+
+// 2. Six terminal straps: s0-s2 line side (top), s3-s5 load side (bottom). They slide in from the front.
+var straps = [];
+for (var i = 0; i < 6; i++) {
+  var st = group(); add(st, edgeObj(new THREE.BoxGeometry(0.5, 0.75, 0.12)), 0, 0, 0); add(st, edgeObj(cylZ(0.1, 0.14, 10)), 0, i < 3 ? 0.15 : -0.15, 0.02);
+  var sx = POLES[i % 3], sy = i < 3 ? 1.65 : -1.65; st.position.set(sx, sy, 0.25); straps.push(st);
+  part('s' + i, st, v(sx, sy, 2.2));
+}
+// 3. Contact arm assembly: one moving arm per pole on a common crossbar, plus the feeler gauge for the gap
+var arms = group();
+POLES.forEach(function (x) { var a = edgeObj(new THREE.BoxGeometry(0.16, 1.5, 0.14)); a.rotation.z = 0.12; add(arms, a, x, 0.45, 0.35); add(arms, edgeObj(new THREE.BoxGeometry(0.3, 0.12, 0.2)), x + 0.08, 1.2, 0.35); });
+add(arms, edgeObj(new THREE.BoxGeometry(2.5, 0.16, 0.16)), 0, -0.3, 0.35);
+part('arms', arms, v(0, 0, 2.4));
+var gauge = edgeObj(new THREE.BoxGeometry(0.6, 0.04, 0.5)); gauge.position.set(1.0, 1.32, 0.5); part('gauge', gauge, v(2.2, 1.32, 0.5));
+// 4. Arc chutes: a stack of splitter plates per pole, above the contacts, vents toward the line side
+var chutes = [];
+POLES.forEach(function (x, ci) {
+  var c = group(); for (var pl = 0; pl < 5; pl++) add(c, edgeObj(new THREE.BoxGeometry(0.62, 0.035, 0.42)), 0, pl * 0.1, 0);
+  add(c, edgeObj(new THREE.BoxGeometry(0.04, 0.5, 0.42)), -0.33, 0.2, 0); add(c, edgeObj(new THREE.BoxGeometry(0.04, 0.5, 0.42)), 0.33, 0.2, 0);
+  var arrow = label('▲', 30); arrow.scale.set(0.5, 0.25, 1); arrow.position.set(0, 0.72, 0); c.add(arrow);
+  c.position.set(x, 0.75, 0.6); chutes.push(c); part('c' + ci, c, v(x, 0.75, 2.6));
+});
+// 5. Trip unit across the load side, with its rating dial (pointer turns to 1.0 × In)
+var trip = group(); add(trip, edgeObj(new THREE.BoxGeometry(2.6, 0.9, 0.5)), 0, 0, 0); add(trip, edgeObj(new THREE.BoxGeometry(0.6, 0.3, 0.02)), -0.7, 0, 0.26);
+trip.position.set(0, -0.95, 0.45); part('trip', trip, v(0, -0.95, 2.4));
+var dial = group(); add(dial, edgeObj(cylZ(0.24, 0.08, 16)), 0, 0, 0); add(dial, edgeObj(new THREE.BoxGeometry(0.05, 0.2, 0.03)), 0, 0.1, 0.05);
+dial.position.set(0.75, -0.95, 0.76); part('dial', dial, null, new THREE.Euler(0, 0, 1.6)); dial.rotation.z = -0.6; P.dial.homeRot = dial.rotation.clone();
+// 6. Operating mechanism (frame + 2 springs) in the middle pole, handle on top of it
+var mech = group(); add(mech, edgeObj(new THREE.BoxGeometry(0.9, 0.9, 0.55)), 0, 0, 0);
+[-0.22, 0.22].forEach(function (x) { var sp = edgeObj(new THREE.CylinderGeometry(0.07, 0.07, 0.7, 6, 5)); sp.rotation.z = 0.5 * Math.sign(x); add(mech, sp, x, 0.05, 0.32); });
+mech.position.set(0, 0.15, 0.95); part('mech', mech, v(0, 0.15, 2.8));
+var handle = edgeObj(new THREE.BoxGeometry(0.34, 0.6, 0.3)); handle.geometry.translate(0, 0, 0.3); handle.geometry.rotateX(-Math.PI / 2);
+handle.position.set(0, 0.15, 1.2); part('handle', handle, v(0, 0.15, 3.0)); handle.rotation.x = -0.45; P.handle.homeRot = handle.rotation.clone(); // ON = tilted up
+// 7. Cover + 4 screws (1 top-left, 2 top-right, 3 bottom-right, 4 bottom-left -> 1, 3, 2, 4 is the cross) + TEST button
+var cover = group(); add(cover, edgeObj(new THREE.BoxGeometry(3.0, 4.0, 0.12)), 0, 0, 0); add(cover, edgeObj(new THREE.BoxGeometry(0.5, 0.8, 0.14)), 0, 0.15, 0);
+cover.position.set(0, 0, 1.25); part('cover', cover, v(0, 0, 3.4));
+var SCREW = [[-1.25, 1.75], [1.25, 1.75], [1.25, -1.75], [-1.25, -1.75]], screws = [];
+for (var w = 0; w < 4; w++) {
+  var sg = group(); add(sg, edgeObj(cylZ(0.13, 0.08, 6), 10), 0, 0, 0); add(sg, edgeObj(new THREE.BoxGeometry(0.2, 0.03, 0.02)), 0, 0, 0.05);
+  sg.position.set(SCREW[w][0], SCREW[w][1], 1.35); screws.push(sg); part('w' + w, sg, v(SCREW[w][0], SCREW[w][1], 2.6));
+}
+var nums = screws.map(function (sg, i) { var s = label(String(i + 1)); s.scale.set(0.6, 0.3, 1); s.position.set(0, 0.36, 0); sg.add(s); return s; });
+var test = edgeObj(new THREE.BoxGeometry(0.3, 0.2, 0.12)); test.position.set(1.0, -1.15, 1.37); part('test', test);
+var lbl = group(); add(lbl, edgeObj(new THREE.BoxGeometry(1.1, 0.55, 0.02)), 0, 0, 0); for (var r = 0; r < 3; r++) add(lbl, edgeObj(new THREE.BoxGeometry(0.8, 0.02, 0.02)), 0, 0.12 - r * 0.12, 0.02);
+lbl.position.set(-0.75, -1.15, 1.33); part('label', lbl, v(-0.75, -1.15, 2.8));
+
+var INSTALL = { base: 0, tag: 0, s0: 1, s1: 1, s2: 1, s3: 1, s4: 1, s5: 1, arms: 2, gauge: 2, c0: 3, c1: 3, c2: 3, trip: 4, dial: 4, mech: 5, handle: 5, cover: 6, w0: 6, w1: 6, w2: 6, w3: 6, test: 6, label: 7 };
+var SEQ = [0, 2, 1, 3]; // cover screw order 1 -> 3 -> 2 -> 4 (indices)
+var INSIDE = ['s0', 's1', 's2', 's3', 's4', 's5', 'arms', 'c0', 'c1', 'c2', 'trip', 'dial', 'mech'];
+
+function setColor(obj, hex, op) { (obj.userData.mats || []).forEach(function (m) { m.color.setHex(hex); m.opacity = op; }); obj.traverse(function (o) { if (o.material && o.material.color && !o.isSprite) { o.material.color.setHex(hex); o.material.transparent = true; o.material.opacity = op; } }); }
+
+// ---------- step state ----------
+var stepT0 = 0;
+function apply() {
+  var s = STEPS[Math.min(cur, N - 1)], done = cur >= N;
+  document.getElementById('k').textContent = done ? 'COMPLETE' : 'STEP ' + (cur + 1) + ' / ' + N + ' · ' + s.k;
+  document.getElementById('h').textContent = done ? '✓ ' + JOB.done : s.h;
+  document.getElementById('d').textContent = done ? 'All ' + N + ' steps logged · to bench test' : s.d;
+  document.getElementById('part').textContent = done ? '' : '● ' + s.part;
+  document.getElementById('dots').innerHTML = STEPS.map(function (_, i) { return '<i class="' + (i < cur ? 'done' : i === cur ? 'on' : '') + '"></i>'; }).join('');
+  [].forEach.call(document.querySelectorAll('#list li'), function (li, i) { li.className = i < cur ? 'done' : i === cur ? 'on' : ''; });
+  var active = done ? [] : s.parts;
+  Object.keys(P).forEach(function (n) {
+    var p = P[n], on = active.indexOf(n) >= 0, installed = INSTALL[n] < cur;
+    p.obj.visible = on || installed;
+    var behind = cur >= 6 && INSIDE.indexOf(n) >= 0; // once the cover is on, the insides fade back
+    setColor(p.obj, on ? COL.on : COL.done, on ? 1 : behind ? 0.22 : 0.5);
+  });
+  P.gauge.obj.visible = cur === 2;   // gauge only while checking the gap
+  P.tag.obj.visible = cur === 0;     // work-order tag only at the scan
+  line.visible = load.visible = cur <= 3;
+  nums.forEach(function (n) { n.visible = cur === 6; });
+  stepT0 = performance.now() / 1000;
+}
+// Step state lives on the server when connected, so the phone's voice commands ("next", "back", "hide", "show")
+// move this view too. Offline (opened as a file), it falls back to local state.
+var link = null, live = false, hiddenView = false;
+(function () { var st = document.createElement('style'); st.textContent = window.ARWA_WIDGET ? ARWA_WIDGET.css : ''; document.head.appendChild(st); })();
+function showWidget(e) {
+  var el = document.getElementById('widget'); if (!el || !window.ARWA_WIDGET) return;
+  el.innerHTML = ARWA_WIDGET.html(e.widget); el.classList.add('on');
+  clearTimeout(showWidget.t); showWidget.t = setTimeout(function () { el.classList.remove('on'); }, (e.ttl_s || 8) * 1000);
+}
+function setHidden(h) { hiddenView = h; document.body.classList.toggle('cleared', h); }
+function flashCmd(t) { var el = document.getElementById('heard'); el.textContent = t; el.classList.add('on'); clearTimeout(flashCmd.t); flashCmd.t = setTimeout(function () { el.classList.remove('on'); }, 1400); }
+function send(cmd, extra) { if (live) { var m = { cmd: cmd }; for (var k in extra || {}) m[k] = extra[k]; link.send('wf', m); return true; } return false; }
+function go(d) { if (send(d > 0 ? 'next' : 'back')) return; cur = Math.max(0, Math.min(N, cur + d)); apply(); }
+function goto(i) { if (send('goto', { step: i })) return; cur = i; apply(); }
+if (window.ARWA && location.protocol.indexOf('http') === 0) {
+  link = ARWA.connect({ role: 'electrical_tech', device: DESK ? 'phone' : 'glasses', name: 'workflow',
+    onStatus: function (st) { live = st === 'live'; },
+    onEvent: function (e) {
+      if (e.type === 'widget') return showWidget(e);
+      if (e.type !== 'wf') return;
+      if (e.job && e.job !== PAGE_JOB && window.WF_JOBS[e.job]) { location.replace(window.WF_JOBS[e.job].page + location.search); return; } // phone switched job
+      var moved = e.step !== cur; cur = e.step; setHidden(!!e.hidden); apply();
+      if (e.cmd && Date.now() - e.ts < 3000) flashCmd({ next: '▸ Next', back: '◂ Back', hide: 'View hidden', show: 'View shown', goto: '▸ Step ' + (e.step + 1), restart: '↺ Restart' }[e.cmd] || '');
+    } });
+}
+window.arwaConfirm = function () { if (cur >= N) { if (!send('restart')) { cur = 0; apply(); } } else go(1); };   // ring / touchpad (M6 app) or tap
+window.arwaExpert = function () { go(-1); };
+// Glasses touchpad / ring (via the M6 app): next, back, toggle (hide/show), expert (long-press).
+window.arwaNav = function (c) {
+  if (c === 'next') return window.arwaConfirm();
+  if (c === 'back') return go(-1);
+  if (c === 'toggle') { if (!send(hiddenView ? 'show' : 'hide')) { setHidden(!hiddenView); flashCmd(hiddenView ? 'View hidden' : 'View shown'); } return; }
+  if (c === 'expert') { if (live) link.send('call_expert'); flashCmd('Expert called'); }
+};
+
+// ---------- motion ----------
+function ease(x) { x = Math.max(0, Math.min(1, x)); return x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2; }
+var tmp = new THREE.Vector3();
+function place(n, k) { // k: 0 = at "from", 1 = home
+  var p = P[n]; if (!p) return;
+  if (p.from) p.obj.position.lerpVectors(p.from, p.home, k); else p.obj.position.copy(p.home);
+  if (p.rotFrom) { p.obj.rotation.set(p.rotFrom.x + (p.homeRot.x - p.rotFrom.x) * k, p.rotFrom.y + (p.homeRot.y - p.rotFrom.y) * k, p.rotFrom.z + (p.homeRot.z - p.rotFrom.z) * k); }
+  else p.obj.rotation.copy(p.homeRot);
+}
+function tick(t) {
+  if (SPIN) table.rotation.y = -0.35 + Math.sin(t * 0.35) * 0.6;    // gentle sway: the front stays readable
+  var lt = t - stepT0, loop = 2.6, k = ease((lt % loop) / 1.4);
+  Object.keys(P).forEach(function (n) { place(n, 1); });
+  if (cur >= N) return;
+  var active = STEPS[cur].parts;
+  if (MONO && cur !== 1 && cur !== 3 && cur !== 6) { var pu = 0.55 + 0.45 * (0.5 + 0.5 * Math.sin(t * 6)); active.forEach(function (n) { setColor(P[n].obj, COL.on, pu); }); }
+  if (cur === 0) { place('base', k); P.tag.obj.rotation.y = 0.35 + Math.sin(t * 2) * 0.15; }
+  if (cur === 1) { for (var i = 0; i < 6; i++) { var kk = ease(((lt % 4.2) - i * 0.55) / 0.5); place('s' + i, kk); setColor(straps[i], kk >= 1 ? COL.done : COL.on, kk >= 1 ? 0.6 : 1); } }
+  if (cur === 2) { place('arms', k); place('gauge', ease(((lt % loop) - 1.2) / 0.8)); }
+  if (cur === 3) { for (var c = 0; c < 3; c++) { var kc = ease(((lt % 3.3) - c * 0.8) / 0.7); place('c' + c, kc); setColor(chutes[c], kc >= 1 ? COL.done : COL.on, kc >= 1 ? 0.6 : 1); } }
+  if (cur === 4) { place('trip', ease((lt % 3.2) / 1.0)); place('dial', ease(((lt % 3.2) - 1.2) / 1.2)); }
+  if (cur === 5) { place('mech', k); place('handle', ease(((lt % loop) - 0.8) / 1.0)); }
+  if (cur === 6) {
+    place('cover', ease(lt / 1.0)); [0, 1, 2, 3].forEach(function (j) { place('w' + j, ease(lt / 1.0)); });
+    if (lt > 1.2) {
+      var idx = Math.floor(((lt - 1.2) % 4.8) / 1.2), which = SEQ[idx];
+      for (var j = 0; j < 4; j++) { var on = j === which, past = SEQ.indexOf(j) < idx; setColor(screws[j], on ? COL.on : past ? COL.done : COL.ghost, on ? 1 : past ? 0.6 : 0.8); screws[j].rotation.z = on ? -lt * 6 : 0; nums[j].material.opacity = on ? 1 : 0.45; }
+      document.getElementById('part').textContent = '● Screw ' + (which + 1) + ' · 1.2 N·m  (1 → 3 → 2 → 4)';
+    }
+  }
+  if (cur === 7) { // ON -> OFF -> ON, then TEST trips it to the middle, then reset, then the label goes on
+    var c7 = lt % 6, hx;
+    if (c7 < 3) hx = Math.floor(c7 / 0.5) % 2 ? 0.45 : -0.45; else if (c7 < 4) hx = 0; else hx = -0.45;
+    handle.rotation.x += (hx - handle.rotation.x) * 0.35;
+    setColor(test, COL.on, c7 >= 3 && c7 < 3.5 ? 1 : 0.4);
+    place('label', ease((c7 - 4.4) / 0.8));
+    document.getElementById('part').textContent = c7 < 3 ? '● Handle ON / OFF ×3' : c7 < 4 ? '● TEST: handle trips to middle' : '● Reset, then label';
+  }
+}
+
+// ---------- desktop step list ----------
+document.getElementById('list').innerHTML = STEPS.map(function (s) { return '<li><b>' + s.h + '</b><span>' + s.d + '</span></li>'; }).join('');
+[].forEach.call(document.querySelectorAll('#list li'), function (li, i) { li.onclick = function () { goto(i); }; });
+document.getElementById('next').onclick = function () { window.arwaConfirm(); };
+document.getElementById('prev').onclick = function () { window.arwaExpert(); };
+
+// ---------- input ----------
+addEventListener('keydown', function (e) {
+  if (['Enter', ' ', 'ArrowRight', 'PageDown', 'MediaPlayPause'].indexOf(e.key) >= 0) { e.preventDefault(); window.arwaConfirm(); }
+  if (['ArrowLeft', 'PageUp', 'Backspace'].indexOf(e.key) >= 0) { e.preventDefault(); window.arwaExpert(); }
+});
+var downAt = 0;
+view.addEventListener('pointerdown', function () { downAt = performance.now(); });
+view.addEventListener('pointerup', function () { if (performance.now() - downAt > 600) window.arwaExpert(); else window.arwaConfirm(); });
+
+// ---------- loop (capped, paused when hidden) ----------
+size(); apply();
+var last = 0;
+function frame(ms) {
+  requestAnimationFrame(frame);
+  if (document.hidden || ms - last < 1000 / FPS - 2) return;
+  last = ms; tick(ms / 1000); renderer.render(scene, camera);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

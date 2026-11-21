@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>ARWA Glasses</title>
+<style>
+  /* Waveguide rule: black = transparent. Keep content big, sparse, high contrast, centre-weighted. */
+  :root { --fg: #fff; --dim: #9ca3af; }
+  html, body { margin: 0; height: 100%; background: #000; color: var(--fg); font: 600 22px/1.25 system-ui, sans-serif; overflow: hidden; }
+  #stage { position: absolute; inset: 6% 8%; display: flex; flex-direction: column; justify-content: center; gap: 18px; }
+  .m { border-left: 8px solid currentColor; padding: 6px 12px; }
+  .m .h { font-size: 1.15em; }
+  .m .d { font-weight: 500; color: var(--dim); font-size: .85em; }
+  .m.stale { border-left-style: dashed; }
+  /* Mono display: severity by shape and motion, since every colour shows as green. */
+  body.mono .m.sev-red { border-left-width: 16px; animation: blink 1s steps(2) infinite; }
+  body.mono .m.sev-amber { border-left-style: double; border-left-width: 14px; }
+  body.mono .m.sev-grey .h, body.mono .m.sev-blue .h { font-weight: 500; }
+  /* Corner panel (hud-layout.js): bigger type inside the shrunk box, only the top card keeps its detail line. */
+  body.boxed #box { font-size: 1.55em; }
+  body.boxed #stage { justify-content: flex-start; inset: 4% 4%; }
+  body.boxed .m + .m .d { display: none; }
+  body.boxed #hud { display: none; }
+  body.cleared #stage, body.cleared #hud { visibility: hidden; }
+  @keyframes blink { 50% { opacity: .35; } }
+  .m.stale .h::after { content: '  ⟳'; }
+  #hud { position: absolute; bottom: 4px; right: 8px; font: 500 12px monospace; color: #555; }
+  #toast { position: absolute; top: 4%; left: 0; right: 0; text-align: center; font-size: .8em; }
+</style>
+</head>
+<body>
+<div id="box">
+<div id="toast"></div>
+<div id="stage">Connecting…</div>
+<div id="hud"></div>
+</div>
+<script src="/hud-layout.js"></script>
+<script src="/arwa-client.js"></script>
+<script>
+  // URL params: role, mono=1|0 (single-colour waveguide; on by default inside the M6 app), scale=1.3, name
+  const q = new URLSearchParams(location.search);
+  const MONO = q.get('mono') === '1' || (q.get('mono') !== '0' && !!window.ARWAGlasses);
+  if (MONO) document.body.classList.add('mono');
+  const palette = ARWA.PALETTES[MONO ? 'mono' : 'color'];
+  if (q.get('scale')) document.body.style.fontSize = 22 * Number(q.get('scale')) + 'px';
+  const stage = document.getElementById('stage'), hud = document.getElementById('hud'), toast = document.getElementById('toast');
+  let canConfirm = false, pendingHandoff = false;
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+
+  const client = ARWA.connect({
+    role: q.get('role') || 'electrical_tech', device: 'glasses', name: q.get('name') || 'glasses',
+    onStatus: (s) => { if (s !== 'live') stage.innerHTML = '<div class="m stale" style="color:#9ca3af"><div class="h">LINK DOWN</div><div class="d">Do not rely on last screen</div></div>'; },
+    onMarkers: (markers, t) => {
+      canConfirm = markers.some((m) => m.step && m.step.can_confirm);
+      pendingHandoff = markers.some((m) => m.kind === 'handoff');
+      alertOn(markers);
+      stage.innerHTML = markers.map((m) => `<div class="m sev-${m.severity_color} ${m.stale ? 'stale' : ''}" style="color:${palette[m.severity_color] || '#fff'}">
+          <div class="h">${ARWA.ICON[m.severity_color] || ''} ${esc(m.headline)}</div><div class="d">${esc(m.detail)}</div></div>`).join('');
+      hud.textContent = `${t.e2e_ms != null ? 'e2e ' + t.e2e_ms + 'ms' : ''} ${t.rtt_ms != null ? 'rtt ' + t.rtt_ms + 'ms' : ''}`;
+    },
+    onEvent: (e) => {
+      if (e.type === 'confirm_result') flash(e.ok ? '✓ Step logged' : '✕ ' + e.reason);
+      if (e.type === 'info') flash(e.text);
+    },
+  });
+  // On the M6 app (Android WebView) the native bridge does speech + voice and no tap is needed.
+  const NATIVE = !!window.ARWAGlasses;
+  // Speaker: spoken alerts + tones for new hazards/alarms (glasses speaker). Mic: voice commands. Both need one tap to enable (browser rule).
+  let lastAlert = '', audioOn = false, actx = null;
+  function tone(f, ms, n = 1) { if (!audioOn) return; try { actx = actx || new AudioContext(); for (let i = 0; i < n; i++) { const o = actx.createOscillator(), g = actx.createGain(), t = actx.currentTime + i * (ms / 1000 + .08); o.frequency.value = f; g.gain.setValueAtTime(.2, t); g.gain.exponentialRampToValueAtTime(.001, t + ms / 1000); o.connect(g).connect(actx.destination); o.start(t); o.stop(t + ms / 1000); } } catch {} }
+  function say(t) { if (!audioOn) return; if (NATIVE) return ARWAGlasses.say(t.replace(/[✓✕›!?]/g, '')); if ('speechSynthesis' in window) { speechSynthesis.cancel(); speechSynthesis.speak(new SpeechSynthesisUtterance(t.replace(/[✓✕›!?]/g, ''))); } }
+  function alertOn(markers) {
+    const top = markers.find((m) => m.kind === 'hazard' || m.kind === 'alarm' || (m.kind === 'target' && m.stale));
+    const key = top ? top.marker_id + top.headline : '';
+    if (top && key !== lastAlert) { tone(top.kind === 'hazard' ? 440 : 330, 200, top.kind === 'hazard' ? 3 : 1); say(top.headline); }
+    lastAlert = key;
+  }
+  function startVoice() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition; if (!SR) return;
+    const rec = new SR(); rec.continuous = true; rec.lang = 'en-US';
+    rec.onresult = (e) => { const t = e.results[e.results.length - 1][0].transcript.toLowerCase();
+      if (/next|confirm|done|okay|pick up/.test(t)) arwaConfirm(); else if (/expert|help/.test(t)) arwaExpert(); else if (/hand ?off/.test(t)) client.send('handoff'); else if (/finding/.test(t)) client.send('finding', { asset_id: null, anchor_id: 'pdu07', note: t.replace(/.*finding/, '').trim() }); };
+    rec.onend = () => { try { rec.start(); } catch {} }; try { rec.start(); } catch {}
+  }
+  if (NATIVE) { audioOn = true; if (q.get('voice') !== '0') ARWAGlasses.startVoice(); }
+  addEventListener('pointerdown', () => { if (!audioOn) { audioOn = true; flash('Sound + voice on'); if (q.get('voice') !== '0') startVoice(); } }, { once: true });
+
+  function flash(t) { toast.textContent = t; clearTimeout(flash.t); flash.t = setTimeout(() => (toast.textContent = ''), 2500); }
+
+  // Input mapping. Ring / temple touch / BT clicker usually arrive as key events (Enter, arrows, media keys).
+  // Wire the MicroLumin SDK's ring/voice callbacks to the same two functions.
+  window.arwaConfirm = () => client.send(pendingHandoff ? 'pick_up' : 'confirm_step'); // ring tap picks up a pending handoff first
+  window.arwaExpert = () => client.send('call_expert');
+  // Side touchpad (M6 app): swipe = confirm / expert as before; tap = clear the view; hold = call expert.
+  window.arwaNav = (c) => {
+    if (c === 'next') return arwaConfirm();
+    if (c === 'back' || c === 'expert') return arwaExpert();
+    if (c === 'toggle') { document.body.classList.toggle('cleared'); flash(document.body.classList.contains('cleared') ? 'View hidden' : 'View shown'); }
+  };
+  // Native bridge (Android glasses app): SDK speech results arrive here; SDK camera via window.ARWAGlasses.snapPanel('B').
+  window.arwaVoice = (t) => { t = String(t).toLowerCase();
+    if (/next|confirm|done|okay|pick up/.test(t)) arwaConfirm(); else if (/expert|help/.test(t)) arwaExpert();
+    else if (/hand ?off/.test(t)) client.send('handoff'); else if (/check|panel/.test(t) && window.ARWAGlasses) ARWAGlasses.snapPanel('B'); };
+  addEventListener('keydown', (e) => {
+    if (['Enter', ' ', 'ArrowRight', 'MediaPlayPause', 'PageDown'].includes(e.key)) arwaConfirm();
+    if (['e', 'E', 'ArrowLeft', 'PageUp'].includes(e.key)) arwaExpert();
+  });
+  addEventListener('click', () => arwaConfirm());
+</script>
+</body>
+</html>

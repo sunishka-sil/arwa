@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>ARWA Voice</title>
+<style>
+  :root { color-scheme: dark; --bg: #0b0f14; --card: #111827; --line: #1f2937; --fg: #e5e7eb; --dim: #9ca3af; --on: #22c55e; --warn: #f59e0b; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.4 system-ui, sans-serif; }
+  header { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; background: var(--card); position: sticky; top: 0; z-index: 2; }
+  header b { letter-spacing: .08em; }
+  #status { font-size: 12px; }
+  main { padding: 14px 16px 130px; max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+  #now { border: 2px solid var(--on); border-radius: 14px; padding: 14px; background: var(--card); }
+  #now .k { font: 700 12px system-ui; letter-spacing: .12em; color: var(--on); }
+  #now .h { font-size: 24px; font-weight: 700; margin: 4px 0; text-wrap: balance; }
+  #now .d { color: var(--dim); }
+  #now .p { margin-top: 8px; font-size: 14px; color: var(--on); }
+  #dots { display: flex; gap: 6px; margin-top: 10px; }
+  #dots i { width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid #4b5563; }
+  #dots i.done { background: #4b5563; } #dots i.on { background: var(--on); border-color: var(--on); }
+  #viewstate { font-size: 13px; color: var(--dim); }
+  #viewstate.hidden { color: var(--warn); }
+  #mic { display: flex; align-items: center; gap: 12px; padding: 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--card); cursor: pointer; width: 100%; color: var(--fg); font: 600 16px system-ui; text-align: left; }
+  #mic .dot { width: 18px; height: 18px; border-radius: 50%; background: #4b5563; flex: none; }
+  #mic.on .dot { background: #ef4444; animation: pulse 1.2s infinite; }
+  @keyframes pulse { 50% { box-shadow: 0 0 0 8px rgba(239,68,68,.15); } }
+  #mic small { display: block; font-weight: 400; color: var(--dim); font-size: 13px; }
+  #heard { min-height: 24px; font-size: 14px; color: var(--dim); }
+  #heard b { color: var(--fg); }
+  .cmds { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; font-size: 13px; color: var(--dim); text-align: center; }
+  .cmds span { border: 1px dashed var(--line); border-radius: 8px; padding: 6px 2px; }
+  .cmds span b { display: block; color: var(--fg); font-size: 15px; }
+  ol { margin: 0; padding: 0; list-style: none; counter-reset: s; display: flex; flex-direction: column; gap: 4px; }
+  li { counter-increment: s; padding: 8px 10px; border-radius: 10px; font-size: 14px; color: var(--dim); }
+  li::before { content: counter(s) '. '; font-weight: 700; }
+  li.on { color: var(--fg); background: rgba(34,197,94,.1); }
+  li.done { text-decoration: line-through; opacity: .6; }
+  .bar { position: fixed; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: 1fr 1fr 1.4fr; gap: 8px; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); background: var(--card); }
+  .bar button { font: 600 15px system-ui; padding: 14px 8px; border-radius: 10px; border: 0; background: var(--line); color: var(--fg); }
+  .bar button.primary { background: #16a34a; color: #fff; }
+  .ask { display: flex; gap: 8px; } .ask input { flex: 1; min-width: 0; font: 15px system-ui; padding: 12px; border-radius: 10px; border: 1px solid #273444; background: var(--card); color: var(--fg); }
+  .ask button { font: 600 15px system-ui; padding: 0 16px; border-radius: 10px; border: 0; background: #2563eb; color: #fff; }
+  .alabel { font-size: 12px; color: var(--dim); margin-bottom: 6px; } #asrc { opacity: .8; }
+  #aglass { background: #000; border-radius: 12px; padding: 14px; color: #39ff14; font-size: 16px; border: 1px solid var(--line); }
+  #hist { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+  #hist li { padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; color: var(--fg); text-decoration: none; opacity: 1; }
+  #hist li::before { content: none; } #hist small { color: var(--dim); display: block; }
+  #warn { display: none; padding: 10px 12px; border-radius: 10px; background: #3b1d0a; color: #fcd34d; font-size: 14px; }
+</style>
+</head>
+<body>
+<header><b>ARWA · voice</b><span id="status">connecting…</span></header>
+<main>
+  <div id="warn"></div>
+  <label id="jobRow" style="display:flex;gap:8px;align-items:center;font-size:13px;color:var(--dim)">Job <select id="job" style="flex:1;font:600 15px system-ui;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--fg)"></select></label>
+  <button id="mic"><span class="dot"></span><span><span id="micText">Tap to start listening</span><small>Say a command, or ask a question; the glasses follow</small></span></button>
+  <div class="cmds"><span><b>“Next”</b>step ▸</span><span><b>“Back”</b>◂ step</span><span><b>“Hide”</b>clear view</span><span><b>“Show”</b>view back</span></div>
+  <div id="heard"></div>
+  <form id="askForm" class="ask"><input id="askText" placeholder="Ask anything: “what's the torque?”" autocomplete="off"><button>Ask</button></form>
+  <div id="answer" hidden><div class="alabel">Answer on the glasses <span id="asrc"></span></div><div id="aglass"></div></div>
+  <div id="now"><div class="k" id="k"></div><div class="h" id="h"></div><div class="d" id="d"></div><div class="p" id="p"></div><div id="dots"></div></div>
+  <div id="viewstate"></div>
+  <ol id="list"></ol>
+  <div id="histWrap" hidden><div class="alabel">Ask history</div><ul id="hist"></ul></div>
+</main>
+<div class="bar"><button id="back">◂ Back</button><button id="hide">Hide</button><button id="next" class="primary">Next ▸</button></div>
+<script src="/workflow-steps.js"></script>
+<script src="/widget.js"></script>
+<script src="/arwa-client.js"></script>
+<script>
+// Phone = the technician's voice remote. Steps as text only; the 3D view is on the glasses.
+// Speech runs in the phone's browser (Chrome on Android, Safari on iOS), which needs HTTPS:
+// open https://<laptop-ip>:8443/voice.html and accept the certificate warning once.
+var JOBS = window.WF_JOBS, STEPS = window.WF_STEPS, N = STEPS.length, $ = function (id) { return document.getElementById(id); };
+var state = { job: 'coupling', step: 0, hidden: false }, live = false;
+// Job picker: switching job restarts at step 1 on both phone and glasses (the glasses page swaps its 3D scene).
+$('job').innerHTML = Object.keys(JOBS).map(function (k) { return '<option value="' + k + '">' + JOBS[k].short + '</option>'; }).join('');
+$('job').onchange = function () { if (live) link.send('wf', { cmd: 'job', job: this.value }); };
+
+var link = ARWA.connect({ role: 'electrical_tech', device: 'phone', name: new URLSearchParams(location.search).get('name') || 'phone',
+  onStatus: function (s) { live = s === 'live'; $('status').textContent = s === 'live' ? '● glasses link live' : '○ offline'; $('status').style.color = live ? '#22c55e' : '#ef4444'; },
+  onEvent: function (e) { if (e.type === 'wf') { state = e; render(); } if (e.type === 'widget') showAnswer(e); } });
+
+function render() {
+  var J = JOBS[state.job] || JOBS.coupling; STEPS = J.steps; N = STEPS.length; $('job').value = state.job || 'coupling';
+  var i = state.step, done = i >= N, s = STEPS[Math.min(i, N - 1)];
+  $('k').textContent = done ? 'COMPLETE' : 'STEP ' + (i + 1) + ' OF ' + N + ' · ' + s.k;
+  $('h').textContent = done ? '✓ ' + J.done : s.h;
+  $('d').textContent = done ? 'All steps logged. Say “back” to review, or tap Next to restart.' : s.d;
+  $('p').textContent = done ? '' : 'On the glasses: ' + s.part;
+  $('dots').innerHTML = STEPS.map(function (_, j) { return '<i class="' + (j < i ? 'done' : j === i ? 'on' : '') + '"></i>'; }).join('');
+  $('list').innerHTML = STEPS.map(function (x, j) { return '<li class="' + (j < i ? 'done' : j === i ? 'on' : '') + '">' + x.h + '</li>'; }).join('');
+  $('viewstate').textContent = state.hidden ? 'Glasses view hidden. Say “show” to bring it back.' : 'Glasses view showing.';
+  $('viewstate').className = state.hidden ? 'hidden' : '';
+  $('hide').textContent = state.hidden ? 'Show' : 'Hide';
+}
+render();
+(function () { var st = document.createElement('style'); st.textContent = ARWA_WIDGET.css; document.head.appendChild(st); })();
+// ---- ask: free speech or typed text -> server -> AI (or rules) -> one widget on the glasses ----
+function ask(text) { if (!live) { $('heard').innerHTML = '<b>Not connected.</b>'; return; } link.send('ask', { text: text }); $('asrc').textContent = '· thinking…'; }
+$('askForm').onsubmit = function (ev) { ev.preventDefault(); var t = $('askText').value.trim(); if (t) { ask(t); $('askText').value = ''; } };
+function showAnswer(e) {
+  $('answer').hidden = false; $('aglass').innerHTML = ARWA_WIDGET.html(e.widget);
+  $('asrc').textContent = '· ' + (e.source === 'claude' ? 'AI' : 'rules') + ' · ' + e.ms + ' ms' + (e.note ? ' · ' + e.note : '');
+  $('histWrap').hidden = false;
+  var li = document.createElement('li');
+  li.innerHTML = '“' + e.heard.replace(/[<>&]/g, '') + '”<small>→ ' + e.widget.type + ': ' + [e.widget.title, e.widget.value, e.widget.unit, e.widget.detail].filter(Boolean).join(' · ').replace(/[<>&]/g, '') + ' (' + (e.source === 'claude' ? 'AI' : 'rules') + ', ' + e.ms + ' ms)</small>';
+  $('hist').insertBefore(li, $('hist').firstChild);
+}
+
+function cmd(c, heard, step) {
+  if (!live) { $('heard').innerHTML = '<b>Not connected to the glasses.</b> Check the laptop server.'; return; }
+  var m = { cmd: c }; if (heard) m.heard = heard; if (step != null) m.step = step;
+  if (c === 'next' && state.step >= N) m.cmd = 'restart';
+  link.send('wf', m);
+  if (navigator.vibrate) navigator.vibrate(30);
+}
+$('next').onclick = function () { cmd('next'); };
+$('back').onclick = function () { cmd('back'); };
+$('hide').onclick = function () { cmd(state.hidden ? 'show' : 'hide'); };
+
+// ---- voice ----
+var WORDS = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, won: 1, to: 2, too: 2, for: 4, ate: 8 };
+function parse(t) {
+  t = ' ' + t.toLowerCase().replace(/[^a-z0-9 ]/g, ' ') + ' ';
+  // questions and longer phrases are "ask", not navigation: "what's next?" asks, "next" moves
+  if (/^ +(what|whats|how|is|are|where|when|which|who|why|can|could|do|does|tell|show me|give me|any) /.test(t) || t.trim().split(/ +/).length > 4) return null;
+  var m = t.match(/ step (\d+|one|two|three|four|five|six|seven|eight|won|to|too|for|ate) /);
+  if (m) return { c: 'goto', step: (WORDS[m[1]] || Number(m[1])) - 1 };
+  if (/ (next|continue|done|okay next|forward) /.test(t)) return { c: 'next' };
+  if (/ (back|previous|go back|undo) /.test(t)) return { c: 'back' };
+  if (/ (hide|clear|hide view|clear view) /.test(t)) return { c: 'hide' };
+  if (/ (show|show view|view) /.test(t)) return { c: 'show' };
+  if (/ (restart|start over) /.test(t)) return { c: 'restart' };
+  return null;
+}
+var SR = window.SpeechRecognition || window.webkitSpeechRecognition, rec = null, listening = false, acted = {}, lastAct = 0;
+if (!SR) warn('This browser has no speech recognition. Use Chrome on Android or Safari on iOS. The buttons still work.');
+else if (!window.isSecureContext) warn('Voice needs HTTPS. Open https://' + location.hostname + ':8443/voice.html and accept the certificate warning once.');
+
+function warn(t) { $('warn').textContent = t; $('warn').style.display = 'block'; }
+function startRec() {
+  rec = new SR(); rec.lang = 'en-US'; rec.continuous = true; rec.interimResults = true; rec.maxAlternatives = 1;
+  rec.onresult = function (e) {
+    for (var i = e.resultIndex; i < e.results.length; i++) {
+      var r = e.results[i], t = r[0].transcript.trim();
+      $('heard').innerHTML = 'Heard: <b>“' + t.replace(/[<>&]/g, '') + '”</b>';
+      if (acted[i]) continue;
+      var p = parse(t);
+      // act on an interim result as soon as a command word appears (faster), once per utterance, with a short debounce
+      if (p && Date.now() - lastAct > 700) { acted[i] = true; lastAct = Date.now(); cmd(p.c, t, p.step); }
+      else if (!p && r.isFinal && t.split(/\s+/).length >= 2) { acted[i] = true; ask(t); }
+    }
+  };
+  rec.onerror = function (e) { if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { listening = false; ui(); warn('Microphone blocked. Allow it for this site in the browser settings.'); } };
+  rec.onend = function () { acted = {}; if (listening) try { rec.start(); } catch (x) {} };   // Chrome stops after silence: restart
+  try { rec.start(); } catch (x) {}
+}
+var wake = null;
+function ui() { $('mic').classList.toggle('on', listening); $('micText').textContent = listening ? 'Listening… tap to stop' : 'Tap to start listening'; }
+$('mic').onclick = function () {
+  if (!SR) return;
+  listening = !listening; ui();
+  if (listening) { startRec(); if (navigator.wakeLock) navigator.wakeLock.request('screen').then(function (w) { wake = w; }).catch(function () {}); }
+  else { try { rec.stop(); } catch (x) {} if (wake) { wake.release(); wake = null; } }
+};
+</script>
+</body>
+</html>

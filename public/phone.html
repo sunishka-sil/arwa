@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>ARWA Phone</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; background: #0b0f14; color: #e5e7eb; font: 16px/1.35 system-ui, sans-serif; }
+  header { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; background: #111827; position: sticky; top: 0; z-index: 2; }
+  header b { letter-spacing: .08em; }
+  #status { font-size: 12px; }
+  main { padding: 12px 16px 120px; max-width: 640px; margin: 0 auto; }
+  .card { border: 2px solid; border-radius: 12px; padding: 10px 12px; margin: 10px 0; background: #111827; }
+  .card .k { font-size: 11px; text-transform: uppercase; letter-spacing: .1em; opacity: .7; }
+  .card .h { font-weight: 700; font-size: 18px; }
+  .card .d { opacity: .85; font-size: 14px; }
+  .card.stale { border-style: dashed; opacity: .8; }
+  #camwrap { position: relative; border-radius: 12px; overflow: hidden; background: #000; display: none; }
+  #camwrap.on { display: block; }
+  video { width: 100%; display: block; }
+  #halo { position: absolute; inset: 0; pointer-events: none; }
+  .bar { position: fixed; left: 0; right: 0; bottom: 0; display: flex; gap: 8px; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); background: #111827; }
+  button { flex: 1; font: 600 15px system-ui; padding: 14px 8px; border-radius: 10px; border: 0; background: #1f2937; color: #e5e7eb; }
+  button.primary { background: #16a34a; color: #fff; }
+  button:disabled { opacity: .4; }
+  .row { display: flex; gap: 8px; margin: 8px 0; }
+  #toast { position: fixed; top: 56px; left: 16px; right: 16px; text-align: center; padding: 8px; border-radius: 8px; background: #1f2937; display: none; }
+  small { opacity: .6; }
+</style>
+</head>
+<body>
+<header><b>ARWA</b><span id="status">connecting…</span></header>
+<div id="toast"></div>
+<main>
+  <div id="camwrap"><video id="vid" playsinline muted></video><canvas id="halo"></canvas></div>
+  <div class="row">
+    <button id="scanBtn">📷 Scan QR</button>
+    <button data-sim="pdu07">Sim scan B2-07</button>
+    <button data-sim="pdu08">Sim scan B2-08</button>
+  </div>
+  <div id="list"></div>
+  <div class="row"><input id="note" placeholder="Finding note (or dictate)" style="flex:2;font:15px system-ui;padding:12px;border-radius:10px;border:1px solid #273444;background:#111827;color:#e5e7eb"><button id="finding">📌 Pin finding</button></div>
+  <div class="row"><button id="handoff">⇄ Hand off shift</button><button id="pickup">Pick up handoff</button><a href="/api/handoff" target="_blank" style="flex:1"><button style="width:100%">Handoff packet</button></a></div>
+  <small id="lat"></small>
+  <div class="row"><button id="reset">Reset procedure</button><a href="/api/evidence" target="_blank" style="flex:1"><button style="width:100%">Evidence log</button></a></div>
+</main>
+<div class="bar"><button id="expert">📞 Expert</button><button id="confirm" class="primary" disabled>Confirm step</button></div>
+<script src="/arwa-client.js"></script>
+<script src="/vendor/jsQR.js"></script>
+<script>
+  const q = new URLSearchParams(location.search);
+  const role = q.get('role') || 'electrical_tech';
+  const pal = ARWA.PALETTES.color;
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+  let markers = [];
+
+  const client = ARWA.connect({
+    role, device: 'phone', name: q.get('name') || 'phone',
+    onStatus: (s) => { $('status').textContent = `${role} · ${s}`; $('status').style.color = s === 'live' ? '#22c55e' : '#ef4444'; },
+    onMarkers: (ms, t) => {
+      markers = ms;
+      $('confirm').disabled = !ms.some((m) => m.step && m.step.can_confirm);
+      $('list').innerHTML = ms.map((m) => `<div class="card ${m.stale ? 'stale' : ''}" style="border-color:${pal[m.severity_color]}">
+        <div class="k" style="color:${pal[m.severity_color]}">${m.kind}${m.stale ? ' · stale' : ''} · ${m.priority}</div>
+        <div class="h">${esc(m.headline)}</div><div class="d">${esc(m.detail)}</div></div>`).join('');
+      $('lat').textContent = `sensor→screen ${t.e2e_ms ?? '–'} ms · ws rtt ${t.rtt_ms ?? '–'} ms`;
+    },
+    onEvent: (e) => {
+      if (e.type === 'scan_result' && e.asset) lastAnchor = e.asset.anchor.id;
+      if (e.type === 'scan_result') toast(e.match ? `✓ Verified ${e.asset.label}` : e.asset ? `✕ ${e.asset.label} is not the target` : '✕ Unknown tag', e.match ? '#16a34a' : '#b91c1c');
+      if (e.type === 'confirm_result') toast(e.ok ? '✓ Step logged' : `✕ ${e.reason}`, e.ok ? '#16a34a' : '#b91c1c');
+      if (e.type === 'expert_call') toast(`📞 ${e.from} needs help on step ${e.step}`, '#2563eb', 8000);
+      if (e.type === 'info') toast(e.text);
+    },
+  });
+  function toast(t, bg = '#1f2937', ms = 2500) { const el = $('toast'); el.textContent = t; el.style.background = bg; el.style.display = 'block'; clearTimeout(toast.t); toast.t = setTimeout(() => (el.style.display = 'none'), ms); }
+
+  $('confirm').onclick = () => client.send('confirm_step');
+  $('expert').onclick = () => client.send('call_expert');
+  $('reset').onclick = () => client.send('reset');
+  let lastAnchor = 'pdu07';
+  $('finding').onclick = () => { client.send('finding', { anchor_id: lastAnchor, note: $('note').value }); $('note').value = ''; };
+  $('handoff').onclick = () => client.send('handoff');
+  $('pickup').onclick = () => client.send('pick_up');
+  document.querySelectorAll('[data-sim]').forEach((b) => (b.onclick = () => client.send('scan', { anchor_id: b.dataset.sim })));
+
+  // ---- QR scanning + 2D halo (BarcodeDetector where available, jsQR otherwise) ----
+  // QR payload format: "arwa:<anchor_id>"
+  let scanning = false, lastSent = 0, lastId = null;
+  $('scanBtn').onclick = async () => {
+    if (scanning) return stopCam();
+    if (!navigator.mediaDevices) return toast('Camera needs HTTPS: open https://<laptop-ip>:8443/phone.html', '#b91c1c', 6000);
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }).catch((e) => toast('Camera: ' + e.message, '#b91c1c'));
+    if (!stream) return;
+    $('vid').srcObject = stream; await $('vid').play(); $('camwrap').classList.add('on'); scanning = true; $('scanBtn').textContent = '■ Stop scan';
+    loop();
+  };
+  function stopCam() { scanning = false; const s = $('vid').srcObject; s && s.getTracks().forEach((t) => t.stop()); $('camwrap').classList.remove('on'); $('scanBtn').textContent = '📷 Scan QR'; }
+  const work = document.createElement('canvas');
+  const detector = 'BarcodeDetector' in window ? new BarcodeDetector({ formats: ['qr_code'] }) : null;
+  async function loop() {
+    if (!scanning) return;
+    const v = $('vid'), halo = $('halo');
+    halo.width = v.clientWidth; halo.height = v.clientHeight;
+    const g = halo.getContext('2d'); g.clearRect(0, 0, halo.width, halo.height);
+    const sx = halo.width / v.videoWidth, sy = halo.height / v.videoHeight;
+    let codes = [];
+    try {
+      if (detector) codes = (await detector.detect(v)).map((c) => ({ text: c.rawValue, pts: c.cornerPoints }));
+      else {
+        work.width = v.videoWidth; work.height = v.videoHeight; const wg = work.getContext('2d'); wg.drawImage(v, 0, 0);
+        const r = jsQR(wg.getImageData(0, 0, work.width, work.height).data, work.width, work.height);
+        if (r) codes = [{ text: r.data, pts: [r.location.topLeftCorner, r.location.topRightCorner, r.location.bottomRightCorner, r.location.bottomLeftCorner] }];
+      }
+    } catch {}
+    for (const c of codes) {
+      if (!c.text.startsWith('arwa:')) continue;
+      const id = c.text.slice(5);
+      // colour each tag from the router's meaning: target = green halo, look-alike = red outline
+      const m = markers.find((m) => m.anchor && m.anchor.id === id && (m.kind === 'target' || m.kind === 'lookalike' || m.kind === 'hazard'));
+      const col = m ? pal[m.severity_color] : '#9ca3af';
+      g.lineWidth = m && m.kind === 'target' ? 10 : 6; g.strokeStyle = col; g.shadowColor = col; g.shadowBlur = m && m.kind === 'target' ? 25 : 0;
+      g.beginPath(); c.pts.forEach((p, i) => (i ? g.lineTo(p.x * sx, p.y * sy) : g.moveTo(p.x * sx, p.y * sy))); g.closePath(); g.stroke();
+      if (m) { g.shadowBlur = 0; g.fillStyle = col; g.font = 'bold 16px system-ui'; g.fillText(m.headline, c.pts[0].x * sx, Math.max(18, c.pts[0].y * sy - 8)); }
+      if (id !== lastId || Date.now() - lastSent > 4000) { client.send('scan', { anchor_id: id }); lastId = id; lastSent = Date.now(); }
+    }
+    requestAnimationFrame(loop);
+  }
+</script>
+</body>
+</html>

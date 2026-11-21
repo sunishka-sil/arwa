@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ARWA Timing Study</title>
+<style>
+ :root{color-scheme:dark} body{margin:0;background:#0b0f14;color:#e5e7eb;font:16px system-ui;padding:16px;max-width:560px;margin:auto}
+ input,select,button{font:inherit;padding:10px;border-radius:8px;border:1px solid #374151;background:#111827;color:inherit;width:100%;box-sizing:border-box;margin:4px 0}
+ #clock{font:700 64px monospace;text-align:center;margin:12px 0} .row{display:flex;gap:8px} .row>*{flex:1}
+ button.go{background:#16a34a;border:0} button.stop{background:#b91c1c;border:0} table{width:100%;font-size:13px;border-collapse:collapse} td,th{border-bottom:1px solid #1f2937;padding:4px;text-align:left}
+</style></head><body>
+<h2>Right asset: with vs without ARWA</h2>
+<p style="opacity:.7;font-size:14px">Task: "Open CB-12 on PDU B2-07." Without = paper work order only. With = glasses/phone overlay. Alternate which condition goes first per participant. Start the clock when they get the instruction, stop when they touch the correct breaker. Count each touch of the wrong unit.</p>
+<input id="pid" placeholder="Participant (e.g. P01)">
+<select id="cond"><option value="without">Without ARWA (paper)</option><option value="with_glasses">With ARWA (glasses)</option><option value="with_phone">With ARWA (phone)</option></select>
+<div id="clock">0.0</div>
+<div class="row"><button class="go" id="start">Start</button><button class="stop" id="stop">Stop</button></div>
+<div class="row"><button id="wrong">+1 wrong pick (<span id="wc">0</span>)</button><button id="save">Save trial</button></div>
+<input id="notes" placeholder="Notes (optional)">
+<h3>Results</h3><div id="summary"></div><table id="tbl"></table>
+<p><a href="/api/trials" style="color:#38bdf8">Download CSV</a></p>
+<script>
+ let t0=null,el=0,wrong=0,timer;const $=id=>document.getElementById(id);
+ $('start').onclick=()=>{t0=performance.now();el=0;wrong=0;$('wc').textContent=0;clearInterval(timer);timer=setInterval(()=>$('clock').textContent=((performance.now()-t0)/1000).toFixed(1),100)};
+ $('stop').onclick=()=>{if(t0){el=(performance.now()-t0)/1000;clearInterval(timer);$('clock').textContent=el.toFixed(1);t0=null}};
+ $('wrong').onclick=()=>{wrong++;$('wc').textContent=wrong};
+ $('save').onclick=async()=>{if(!el)return alertless('Stop the clock first');await fetch('/api/trials',{method:'POST',body:JSON.stringify({participant:$('pid').value,condition:$('cond').value,seconds:el.toFixed(2),wrong_picks:wrong,notes:$('notes').value})});el=0;$('clock').textContent='0.0';load()};
+ function alertless(t){$('clock').textContent=t;setTimeout(()=>$('clock').textContent='0.0',1500)}
+ function parse(csv){const [h,...rows]=csv.trim().split('\n');return rows.map(r=>{const c=r.match(/"([^"]*(?:""[^"]*)*)"/g).map(s=>s.slice(1,-1));return{participant:c[1],condition:c[2],seconds:+c[3],wrong:+c[4]}})}
+ async function load(){const rows=parse(await (await fetch('/api/trials')).text());
+  const by={};rows.forEach(r=>{const k=r.condition.startsWith('with')?'with ARWA':'without';(by[k]=by[k]||[]).push(r)});
+  const med=a=>{const s=a.map(r=>r.seconds).sort((x,y)=>x-y);return s.length?s[Math.floor((s.length-1)/2)]:0};
+  $('summary').innerHTML=Object.entries(by).map(([k,a])=>`<b>${k}</b>: n=${a.length}, median ${med(a).toFixed(1)}s, wrong-asset picks ${a.reduce((s,r)=>s+r.wrong,0)} (${a.filter(r=>r.wrong>0).length}/${a.length} trials)`).join('<br>');
+  $('tbl').innerHTML='<tr><th>P</th><th>cond</th><th>s</th><th>wrong</th></tr>'+rows.map(r=>`<tr><td>${r.participant}</td><td>${r.condition}</td><td>${r.seconds}</td><td>${r.wrong}</td></tr>`).join('')}
+ load();
+</script></body></html>

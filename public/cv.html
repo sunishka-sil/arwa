@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>ARWA Camera</title>
+<style>
+  :root { color-scheme: dark; --ok:#22c55e; --bad:#ef4444; --info:#38bdf8; }
+  body { margin:0; background:#0b0f14; color:#e5e7eb; font:16px/1.35 system-ui,sans-serif; }
+  main { max-width:640px; margin:0 auto; padding:12px 16px 40px; }
+  .tabs { display:flex; gap:8px; margin-bottom:10px; }
+  button, select { font:600 15px system-ui; padding:12px; border-radius:10px; border:1px solid #273444; background:#1f2937; color:#e5e7eb; }
+  button.on { background:#0c4a6e; border-color:var(--info); }
+  button.go { background:#15803d; border:0; flex:1; }
+  #wrap { position:relative; border-radius:12px; overflow:hidden; background:#000; }
+  video { width:100%; display:block; }
+  canvas#ov { position:absolute; inset:0; width:100%; height:100%; }
+  .row { display:flex; gap:8px; margin:10px 0; align-items:center; }
+  #out { margin-top:10px; }
+  .chk { display:flex; justify-content:space-between; padding:8px 10px; border-radius:8px; background:#111827; margin:4px 0; border-left:6px solid; }
+  .verdict { font-weight:700; font-size:20px; margin:8px 0; }
+  small { opacity:.65; }
+</style>
+</head>
+<body>
+<main>
+  <div class="tabs"><button id="tPanel" class="on">Check panel</button><button id="tHaz">Hazard zone</button></div>
+  <div id="wrap"><video id="vid" playsinline muted autoplay></video><canvas id="ov"></canvas></div>
+
+  <section id="panelUI">
+    <div class="row">
+      <select id="recipe"><option value="B">Recipe B</option><option value="A">Recipe A</option></select>
+      <button class="go" id="snap">📷 Snap &amp; check panel</button>
+    </div>
+    <div id="out"><small>Point at the machine panel (or /panel.html on a tablet) and snap. The photo is read by Claude; the pass/fail is checked against the recipe on the server. Result also appears on the glasses.</small></div>
+  </section>
+
+  <section id="hazUI" hidden>
+    <p><small>Prop this phone up as the cell's safety camera. The red box is the danger zone (drag to move it). When a hand enters it, every glasses view shows HANDS CLEAR. Runs on the phone; no images leave it.</small></p>
+    <div class="row"><b id="hazState">Loading hand tracker…</b></div>
+  </section>
+</main>
+
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const vid = $('vid'), ov = $('ov'), g = ov.getContext('2d');
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  const ws = new WebSocket(`${proto}://${location.host}/ws?role=electrical_tech&device=phone&name=camera`);
+
+  if (!navigator.mediaDevices) { $('out').innerHTML = '<b style="color:var(--bad)">Camera needs HTTPS: open https://&lt;laptop-ip&gt;:8443/cv.html</b>'; }
+  else {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1280 } } });
+    vid.srcObject = stream; await vid.play();
+  }
+
+  // ---------- tabs ----------
+  let mode = 'panel';
+  $('tPanel').onclick = () => { mode = 'panel'; $('tPanel').classList.add('on'); $('tHaz').classList.remove('on'); $('panelUI').hidden = false; $('hazUI').hidden = true; };
+  $('tHaz').onclick = () => { mode = 'haz'; $('tHaz').classList.add('on'); $('tPanel').classList.remove('on'); $('panelUI').hidden = true; $('hazUI').hidden = false; startHands(); };
+
+  // ---------- panel check (Claude vision via server) ----------
+  $('snap').onclick = async () => {
+    const c = document.createElement('canvas'); const s = Math.min(1, 1024 / vid.videoWidth);
+    c.width = Math.round(vid.videoWidth * s); c.height = Math.round(vid.videoHeight * s);
+    c.getContext('2d').drawImage(vid, 0, 0, c.width, c.height);
+    $('snap').disabled = true; $('out').innerHTML = '<small>Reading panel…</small>';
+    try {
+      const r = await fetch('/api/vision/panel', { method: 'POST', body: JSON.stringify({ image: c.toDataURL('image/jpeg', 0.85), recipe: $('recipe').value }) });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error);
+      $('out').innerHTML = `<div class="verdict" style="color:${j.ok ? 'var(--ok)' : 'var(--bad)'}">${j.ok ? '✓ Panel matches recipe' : '✕ Panel does not match'}</div>` +
+        j.checks.map((k) => `<div class="chk" style="border-color:${k.ok ? 'var(--ok)' : 'var(--bad)'}"><span>${k.label}</span><span>${k.actual} <small>(spec ${k.expected})</small></span></div>`).join('') +
+        `<small>Asset: ${j.reading.asset_label ?? 'not visible'} · legibility ${j.reading.legibility} · ${j.ms} ms</small>`;
+    } catch (e) { $('out').innerHTML = `<b style="color:var(--bad)">${e.message}</b>`; }
+    $('snap').disabled = false;
+  };
+
+  // ---------- hazard zone (MediaPipe hands, on-device) ----------
+  let zone = { x: 0.6, y: 0.25, w: 0.35, h: 0.5 }, landmarker = null, lastSent = 0;
+  async function startHands() {
+    if (landmarker) return;
+    const { HandLandmarker, FilesetResolver } = await import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs');
+    const files = await FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm');
+    landmarker = await HandLandmarker.createFromOptions(files, {
+      baseOptions: { modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task', delegate: 'GPU' },
+      runningMode: 'VIDEO', numHands: 2,
+    });
+    $('hazState').textContent = 'Watching the zone';
+    loop();
+  }
+  function loop() {
+    if (mode !== 'haz') { g.clearRect(0, 0, ov.width, ov.height); requestAnimationFrame(loop); return; }
+    ov.width = ov.clientWidth; ov.height = ov.clientHeight;
+    const res = landmarker.detectForVideo(vid, performance.now());
+    let inZone = false;
+    g.clearRect(0, 0, ov.width, ov.height);
+    for (const hand of res.landmarks || []) for (const p of hand) {
+      const hit = p.x > zone.x && p.x < zone.x + zone.w && p.y > zone.y && p.y < zone.y + zone.h;
+      inZone ||= hit;
+      g.fillStyle = hit ? '#ef4444' : '#38bdf8'; g.beginPath(); g.arc(p.x * ov.width, p.y * ov.height, 4, 0, 7); g.fill();
+    }
+    g.lineWidth = 4; g.strokeStyle = inZone ? '#ef4444' : 'rgba(239,68,68,.6)'; g.fillStyle = inZone ? 'rgba(239,68,68,.3)' : 'transparent';
+    g.fillRect(zone.x * ov.width, zone.y * ov.height, zone.w * ov.width, zone.h * ov.height);
+    g.strokeRect(zone.x * ov.width, zone.y * ov.height, zone.w * ov.width, zone.h * ov.height);
+    $('hazState').textContent = inZone ? 'HAND IN DANGER ZONE' : 'Watching the zone';
+    $('hazState').style.color = inZone ? '#ef4444' : '';
+    if (inZone && Date.now() - lastSent > 800 && ws.readyState === 1) { ws.send(JSON.stringify({ action: 'hazard', detail: 'Hand in the danger zone (cell camera)' })); lastSent = Date.now(); }
+    requestAnimationFrame(loop);
+  }
+  ov.addEventListener('pointerdown', (e) => { const r = ov.getBoundingClientRect(); zone.x = Math.min(1 - zone.w, Math.max(0, (e.clientX - r.left) / r.width - zone.w / 2)); zone.y = Math.min(1 - zone.h, Math.max(0, (e.clientY - r.top) / r.height - zone.h / 2)); });
+</script>
+</body>
+</html>

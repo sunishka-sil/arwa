@@ -1,0 +1,15 @@
+{
+  "_comment": "A MOP (method of procedure) cut down to 5 steps. One hold point, one reading-gated step. requires_reading syntax: <signal> <op> <number>, op in == != < <= > >=. tolerance applies to ==.",
+  "procedure_id": "MOP-PDU-CB12-ISOLATE",
+  "title": "Isolate CB-12 on PDU B2-07 for receptacle swap",
+  "for_role": "electrical_tech",
+  "target_asset_id": "demo/hall1/rowB/rack2/pdu07",
+  "steps": [
+    { "index": 1, "text": "Go to Row B, Rack 2", "kind": "navigate" },
+    { "index": 2, "text": "Scan the QR on PDU B2-07 to verify the asset", "kind": "verify_asset", "requires_scan": "pdu07" },
+    { "index": 3, "text": "Confirm feed B is healthy before opening", "kind": "hold_point", "hold_point": true,
+      "check_partner": { "signal": "load_pct", "op": "<", "value": 50 } },
+    { "index": 4, "text": "Open breaker CB-12", "kind": "act", "requires_reading": "current_A == 0", "tolerance": 0.2 },
+    { "index": 5, "text": "Apply tag to CB-12 and log complete", "kind": "close_out" }
+  ]
+}

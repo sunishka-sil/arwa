@@ -1,0 +1,49 @@
+{
+  "_comment": "Router rules: which marker kinds each role sees, and the max number of markers on screen at once (glasses = 1-2, phone = more).",
+  "roles": {
+    "electrical_tech": {
+      "kinds": [
+        "target",
+        "lookalike",
+        "step",
+        "alarm",
+        "hazard",
+        "status",
+        "finding",
+        "handoff"
+      ],
+      "max_markers": {
+        "glasses": 3,
+        "phone": 5
+      }
+    },
+    "supervisor": {
+      "kinds": [
+        "status",
+        "alarm",
+        "finding",
+        "handoff"
+      ],
+      "max_markers": {
+        "glasses": 2,
+        "phone": 10
+      }
+    },
+    "remote_expert": {
+      "kinds": [
+        "target",
+        "lookalike",
+        "step",
+        "alarm",
+        "hazard",
+        "status",
+        "finding",
+        "handoff"
+      ],
+      "max_markers": {
+        "glasses": 3,
+        "phone": 10
+      }
+    }
+  }
+}

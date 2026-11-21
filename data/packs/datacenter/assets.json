@@ -1,0 +1,30 @@
+{
+  "_comment": "Fake DCIM export. In production this comes from Nlyte/Hyperview/EcoStruxure IT via an adapter. Asset IDs are site/hall/row/rack/device.",
+  "site": "demo",
+  "assets": [
+    {
+      "asset_id": "demo/hall1/rowB/rack2/pdu07",
+      "label": "PDU B2-07",
+      "type": "pdu",
+      "anchor": { "type": "qr", "id": "pdu07" },
+      "position": "left",
+      "feed": "A",
+      "rack": "demo/hall1/rowB/rack2",
+      "rated_current_A": 16,
+      "breakers": ["CB-10", "CB-11", "CB-12"],
+      "redundancy": { "partner_asset_id": "demo/hall1/rowB/rack2/pdu08", "partner_feed": "B" }
+    },
+    {
+      "asset_id": "demo/hall1/rowB/rack2/pdu08",
+      "label": "PDU B2-08",
+      "type": "pdu",
+      "anchor": { "type": "qr", "id": "pdu08" },
+      "position": "right",
+      "feed": "B",
+      "rack": "demo/hall1/rowB/rack2",
+      "rated_current_A": 16,
+      "breakers": ["CB-10", "CB-11", "CB-12"],
+      "redundancy": { "partner_asset_id": "demo/hall1/rowB/rack2/pdu07", "partner_feed": "A" }
+    }
+  ]
+}

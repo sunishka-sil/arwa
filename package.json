@@ -1,0 +1,27 @@
+{
+  "name": "arwa-starter",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ARWA hackathon starter: simulated sensor -> MQTT -> state model (stale detection) -> router -> marker JSON over WebSocket -> phone/glasses web clients.",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server/index.js",
+    "sim": "node sim/sensor.js",
+    "demo": "node scripts/demo.js",
+    "test": "node --test test/*.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.12.0",
+    "aedes": "^0.51.3",
+    "jsqr": "^1.4.0",
+    "mqtt": "^5.10.1",
+    "qrcode": "^1.5.4",
+    "selfsigned": "^2.4.1",
+    "three": "^0.149.0",
+    "ws": "^8.18.0",
+    "zod": "^4.6.7"
+  }
+}

@@ -1,0 +1,8 @@
+node_modules/
+logs/
+.DS_Store
+android-glasses/.gradle/
+android-glasses/build/
+android-glasses/app/build/
+android-glasses/local.properties
+.env

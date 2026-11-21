@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>ARWA QR Tags</title>
+<style>
+ body{font:16px system-ui;margin:24px;background:#fff;color:#000}
+ .tag{display:inline-block;width:45%;margin:2%;text-align:center;border:2px dashed #999;padding:16px;box-sizing:border-box;page-break-inside:avoid}
+ .tag img{width:80%;max-width:300px}
+ .tag h2{margin:.3em 0 0;font-size:28px}
+ @media print{.noprint{display:none}}
+</style></head><body>
+<p class="noprint">Print this page. Tape one tag on each mock PDU. The labels are deliberately near-identical, like real look-alike units.</p>
+<div id="tags"></div>
+<script>
+ const tags=[{id:'pdu07',label:'PDU B2-07'},{id:'pdu08',label:'PDU B2-08'}];
+ document.getElementById('tags').innerHTML=tags.map(t=>`<div class="tag"><img src="/qr/${t.id}.svg" alt="QR ${t.id}"><h2>${t.label}</h2><div>arwa:${t.id}</div></div>`).join('');
+</script></body></html>

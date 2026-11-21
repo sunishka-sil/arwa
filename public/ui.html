@@ -1,0 +1,557 @@
+<title>ARWA Glasses UI</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a "lens" stage (see-through preview + waveguide HUD) beside a control rail; stacks on phones.
+   Single dark look on purpose: it previews a waveguide, where black means transparent. */
+:root {
+  color-scheme: dark;
+  --bg: #0d1013;          /* page */
+  --panel: #151a1f;       /* control rail */
+  --line: #25303a;
+  --ink: #e6ebef;
+  --muted: #8b98a5;
+  --accent: #6fd3ff;      /* chrome accent (not a status colour) */
+  /* HUD semantic palette (full colour waveguide) */
+  --ok: #3ee07a; --bad: #ff4d4d; --warn: #ffb020; --info: #6fd3ff; --dim: #9aa6b2;
+  --hud-font: "Barlow Semi Condensed", "Arial Narrow", system-ui, sans-serif;
+  --ui-font: "Barlow", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, monospace;
+}
+.mono-hud { --ok: #5dff7a; --bad: #5dff7a; --warn: #5dff7a; --info: #5dff7a; --dim: #2f9a45; }
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.4 var(--ui-font); margin: 0;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 14px; }
+.wrap { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; max-width: 1280px; margin: 0 auto; }
+@media (max-width: 900px) { .wrap { grid-template-columns: minmax(0, 1fr); } }
+header.top { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; max-width: 1280px; margin: 0 auto 10px; }
+header.top h1 { font: 700 22px var(--hud-font); letter-spacing: .04em; margin: 0; }
+header.top p { margin: 0; color: var(--muted); font-size: 14px; }
+
+/* ---------- lens ---------- */
+.lens { position: relative; aspect-ratio: 16 / 10; width: 100%; max-width: 100%; border-radius: 14px; overflow: hidden; background: #000; border: 1px solid var(--line); }
+.lens svg.scene { position: absolute; inset: 0; width: 100%; height: 100%; transition: opacity .3s; }
+.lens.display-only svg.scene { opacity: 0; }
+.fov { position: absolute; left: 14%; right: 14%; top: 12%; bottom: 12%; border-radius: 10px; }
+.lens.m6 .fov, .lens.m6 .hud { left: auto; bottom: auto; right: 5%; top: 7%; width: 44%; aspect-ratio: 4 / 3; }
+.lens:not(.display-only) .fov { background: rgba(0,0,0,.28); box-shadow: 0 0 0 1px rgba(255,255,255,.06); }
+.hud { position: absolute; left: 14%; right: 14%; top: 12%; bottom: 12%; font-family: var(--hud-font); color: #fff; container-type: inline-size; }
+.hud * { text-shadow: 0 0 6px rgba(0,0,0,.6); }
+.chip { position: absolute; font: 600 3.6cqw/1.1 var(--hud-font); display: flex; gap: .5em; align-items: center; letter-spacing: .02em; }
+.chip.tl { left: 3%; top: 4%; } .chip.tr { right: 3%; top: 4%; } .chip.bl { left: 3%; bottom: 4%; } .chip.br { right: 3%; bottom: 4%; }
+.dot { width: .6em; height: .6em; border-radius: 50%; background: var(--ok); display: inline-block; }
+.dot.stale { background: transparent; border: 2px dashed var(--dim); }
+.pips { display: flex; gap: .3em; } .pips i { width: .55em; height: .55em; border-radius: 50%; border: 2px solid var(--dim); }
+.pips i.on { background: var(--info); border-color: var(--info); } .pips i.done { background: var(--dim); border-color: var(--dim); }
+.main { position: absolute; left: 6%; right: 6%; top: 50%; transform: translateY(-50%); display: flex; gap: 4cqw; align-items: center; }
+.glyph { font: 700 11cqw/1 var(--hud-font); min-width: 1em; text-align: center; color: var(--c, var(--info)); }
+.txt { min-width: 0; }
+.h { font: 700 5.6cqw/1.05 var(--hud-font); color: var(--c, #fff); letter-spacing: .01em; }
+.d { font: 500 3.5cqw/1.2 var(--hud-font); color: #d6dde3; margin-top: .35em; }
+.mono-hud .d { color: var(--dim); }
+.mono-hud .h { color: var(--c); }
+.v { font-family: var(--mono); font-weight: 600; }
+.bar { height: 1.1cqw; border-radius: 1cqw; background: rgba(255,255,255,.15); margin-top: 1.4cqw; overflow: hidden; width: 70%; }
+.bar > b { display: block; height: 100%; background: var(--c, var(--info)); transition: width .25s; }
+.arrow { width: 14cqw; height: 14cqw; flex: none; color: var(--info); transition: transform .4s; }
+.reticle { position: absolute; left: 38%; right: 38%; top: 22%; bottom: 30%; }
+.reticle i { position: absolute; width: 22%; height: 22%; border: .7cqw solid var(--c, var(--info)); }
+.reticle i:nth-child(1) { left: 0; top: 0; border-right: 0; border-bottom: 0; } .reticle i:nth-child(2) { right: 0; top: 0; border-left: 0; border-bottom: 0; }
+.reticle i:nth-child(3) { left: 0; bottom: 0; border-right: 0; border-top: 0; } .reticle i:nth-child(4) { right: 0; bottom: 0; border-left: 0; border-top: 0; }
+.reticle.lock i { box-shadow: 0 0 14px var(--c); }
+.under-reticle { position: absolute; left: 10%; right: 10%; bottom: 10%; text-align: center; }
+.edge { position: absolute; top: 50%; transform: translateY(-50%); font: 700 3.2cqw/1.1 var(--hud-font); color: var(--c); display: flex; align-items: center; gap: .4em; max-width: 30%; }
+.edge.r { right: 2%; text-align: right; flex-direction: row-reverse; } .edge.l { left: 2%; }
+.edge .chev { font-size: 7cqw; line-height: 1; }
+.panelmap { display: grid; grid-template-columns: repeat(3, 4.2cqw); grid-template-rows: repeat(3, 3cqw); gap: .7cqw; flex: none; padding: .8cqw; border: 2px solid var(--dim); border-radius: .8cqw; }
+.panelmap i { border: 2px solid var(--dim); border-radius: .4cqw; }
+.panelmap i.hit { border-color: var(--c, var(--info)); background: var(--c, var(--info)); box-shadow: 0 0 12px var(--c, var(--info)); animation: blink 1s infinite; }
+@keyframes blink { 50% { opacity: .35; } }
+.frame { position: absolute; inset: 1.2%; border: 1cqw solid var(--bad); border-radius: 10px; pointer-events: none; animation: pulse .7s infinite alternate; }
+@keyframes pulse { from { opacity: 1; } to { opacity: .35; } }
+.toast { position: absolute; left: 50%; transform: translateX(-50%); top: 15%; font: 700 3.4cqw var(--hud-font); color: var(--c); white-space: nowrap; }
+.stale-on .h, .stale-on .d { opacity: .55; }
+.caption { position: absolute; left: 6%; right: 6%; bottom: 14%; font: 600 3.3cqw/1.25 var(--hud-font); color: #fff; }
+.caption b { color: var(--info); }
+.mic { position: absolute; left: 3%; bottom: 4%; font: 600 3cqw var(--hud-font); color: var(--info); }
+.dosebar { width: 18cqw; height: 1cqw; background: rgba(255,255,255,.15); border-radius: 1cqw; overflow: hidden; } .dosebar b { display: block; height: 100%; background: var(--c, var(--ok)); }
+@media (prefers-reduced-motion: reduce) { .frame, .panelmap i.hit { animation: none; } }
+
+/* ---------- control rail ---------- */
+.rail { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.rail h2 { font: 600 12px var(--ui-font); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 0 0 6px; }
+.seg { display: flex; gap: 6px; flex-wrap: wrap; }
+button { font: 600 14px var(--ui-font); color: var(--ink); background: #1e252d; border: 1px solid var(--line); border-radius: 9px; padding: 9px 12px; cursor: pointer; }
+button:hover { border-color: #3a4855; } button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button[aria-pressed="true"] { background: #11303f; border-color: var(--accent); color: #dff4ff; }
+button.primary { background: #0f5132; border-color: #1f8a57; }
+.steps { list-style: none; padding: 0; margin: 0; display: grid; gap: 2px; max-height: 330px; overflow: auto; }
+.steps button { width: 100%; text-align: left; background: transparent; border: 0; border-radius: 7px; padding: 6px 8px; font-weight: 500; display: grid; grid-template-columns: 22px 1fr auto; gap: 6px; color: var(--muted); }
+.steps button .n { font-family: var(--mono); font-size: 12px; } .steps button .tag { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; opacity: .8; }
+.steps button.cur { background: #11303f; color: var(--ink); } .steps button.past { color: #b8c2cb; }
+.inject { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.note { color: var(--muted); font-size: 13px; margin: 0; } kbd { font-family: var(--mono); font-size: 12px; border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; }
+.below { max-width: 1280px; margin: 12px auto 0; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; color: var(--muted); font-size: 13px; }
+.below .spec { font-family: var(--mono); }
+</style>
+
+<header class="top">
+  <h1>ARWA · glasses UI</h1>
+  <p id="sub">One technician, one job. Every screen the wearer sees, driven by simulated live data.</p>
+</header>
+
+<div class="wrap">
+  <div>
+    <div class="lens" id="lens">
+      <svg class="scene" id="scene" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice" aria-hidden="true"></svg>
+      <div class="fov"></div>
+      <div class="hud" id="hud" aria-live="polite"></div>
+    </div>
+    <div class="below">
+      <span>Ring tap / <kbd>Enter</kbd> next · <kbd>←</kbd> back · <kbd>E</kbd> call expert</span>
+      <span class="spec" id="spec"></span>
+    </div>
+  </div>
+
+  <aside class="rail">
+    <section>
+      <h2>Job</h2>
+      <div class="seg" id="jobs"></div>
+    </section>
+    <section>
+      <h2>Steps</h2>
+      <ol class="steps" id="steps"></ol>
+      <div class="seg" style="margin-top:8px"><button id="back">Back</button><button id="next" class="primary">Next (ring tap)</button></div>
+    </section>
+    <section>
+      <h2>Things that go wrong</h2>
+      <div class="inject" id="inject"></div>
+    </section>
+    <section>
+      <h2>Display</h2>
+      <div class="seg">
+        <button id="seeThru" aria-pressed="true">See-through preview</button>
+        <button id="monoBtn" aria-pressed="false">Monochrome green</button>
+        <button id="soundBtn" aria-pressed="false">Speaker: spoken alerts</button>
+        <button id="voiceBtn" aria-pressed="false">Mic: voice commands</button>
+        <button id="m6Btn" aria-pressed="false">M6 placement (upper right, 640×480)</button>
+      </div>
+      <p class="note" style="margin-top:8px">Voice: say "next", "back", "check panel", "call expert". Speech recognition needs this page opened from the starter server in Chrome; the claude.ai preview blocks the mic.</p>
+      <p class="note" style="margin-top:8px">Turn off see-through to get exactly what the glasses draw: black is transparent on a waveguide. Load this page on the glasses with <kbd>?hud=1</kbd> for display-only full screen.</p>
+    </section>
+  </aside>
+</div>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const hud = $('hud'), lens = $('lens'), scene = $('scene');
+  const esc = (s) => String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+  const C = { ok: 'var(--ok)', bad: 'var(--bad)', warn: 'var(--warn)', info: 'var(--info)', dim: 'var(--dim)' };
+  const GLYPH = { ok: '✓', bad: '✕', warn: '!', info: '›', dim: '?' };
+  const fmt = (n, d = 0) => Number(n).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+
+  // ---------------- simulated live values ----------------
+  const live = { vib: 7.1, finding: 7.1, rpm: 1200, rpmTarget: 1200, fault: 17, recipe: 'A', speed: 100, heater: 160, stack: 'warn',
+    dist: 12, prox: 80, doseRate: 2, dose: 0, valveA: 'OPEN', gauge: { pt: 52, tt: 85, lt: 38 }, peer: false, age: 0.3 };
+
+  // ---------------- screen helpers ----------------
+  const card = (tone, glyph, h, d, extra = '') => `<div class="main" style="--c:${C[tone]}"><div class="glyph">${glyph ?? GLYPH[tone]}</div><div class="txt"><div class="h">${h}</div>${d ? `<div class="d">${d}</div>` : ''}${extra}</div></div>`;
+  const bar = (pct, tone) => `<div class="bar" style="--c:${C[tone]}"><b style="width:${Math.max(0, Math.min(100, pct))}%"></b></div>`;
+  const panel = (hit, tone = 'info') => `<div class="panelmap" style="--c:${C[tone]}">${Array.from({ length: 9 }, (_, i) => `<i class="${i === hit ? 'hit' : ''}"></i>`).join('')}</div>`;
+  const arrow = (deg) => `<svg class="arrow" viewBox="0 0 100 100" style="transform:rotate(${deg}deg)"><path d="M50 6 L86 52 H62 V94 H38 V52 H14 Z" fill="currentColor"/></svg>`;
+  const reticle = (tone, lock) => `<div class="reticle ${lock ? 'lock' : ''}" style="--c:${C[tone]}"><i></i><i></i><i></i><i></i></div>`;
+  const edge = (side, tone, text) => `<div class="edge ${side}" style="--c:${C[tone]}"><span class="chev">${side === 'r' ? '›' : '‹'}</span><span>${text}</span></div>`;
+
+  // ---------------- jobs ----------------
+  // Each step: { tag, title, phases: [ (ctx) => ({ html, onEnter? }) ] }. Next walks phases, then steps.
+  const JOBS = {
+    handoff: {
+      name: 'Inspection handoff', persona: 'Track 02 · shift A finds it, shift B fixes it, nothing lost',
+      asset: 'Line 2 rounds', scene: 'cell3',
+      injects: ['snap', 'wrong', 'hazard', 'alarm', 'stale', 'expert'],
+      steps: [
+        { tag: 'shift A', who: 'Maya · shift A', title: 'Start inspection rounds', phases: [
+          () => ({ html: card('info', '›', 'Rounds · Line 2 · 6 assets', 'Route loaded from the work order. Nothing open from the last shift.') }),
+        ] },
+        { tag: 'inspect', who: 'Maya · shift A', title: 'Gauge PT-101', phases: [
+          () => ({ html: reticle('info') + `<div class="under-reticle" style="--c:${C.info}"><div class="h">Look at PT-101</div><div class="d">Say "check" to read it with the glasses camera</div></div>` }),
+          () => ({ html: card('ok', '✓', `PT-101 · <span class="v">52 psi</span> · in band`, 'Read by the glasses camera · logged 1/6') }),
+        ] },
+        { tag: 'finding', who: 'Maya · shift A', title: 'Machine 3A: vibration high', phases: [
+          () => ({ html: card('bad', '✕', `3A spindle vibration <span class="v">${fmt(live.vib, 1)} mm/s</span>`, 'Limit 4.5 mm/s. Say "finding" to pin it to this machine.') }),
+          () => ({ html: card('warn', '!', 'Finding pinned to Machine 3A', `Reading ${fmt(live.vib, 1)} mm/s · photo · voice note`) + `<div class="caption"><b>Maya (voice note):</b> bearing noise on the drive side, needs a second look.</div>`, enter() { live.finding = live.vib; } }),
+        ] },
+        { tag: 'handoff', who: 'Maya · shift A', title: 'Shift ends: hand off', phases: [
+          () => ({ html: card('info', '⇄', 'Hand off to shift B?', '1 open finding (3A) · stopped after asset 3 of 6') }),
+          () => ({ html: card('ok', '✓', 'Handed off to Dev · 18:42', 'Packet: findings, photos, readings, where you stopped. Nothing to retype.') }),
+        ] },
+        { tag: 'shift B', who: 'Dev · shift B', title: 'Pick up the handoff', phases: [
+          () => ({ html: card('info', '⇄', 'Handoff from Maya · 18:42', '1 open finding: 3A vibration · then resume at asset 4 of 6') }),
+        ] },
+        { tag: 'navigate', who: 'Dev · shift B', title: 'Walk to the open finding', phases: [
+          () => ({ html: `<div class="main">${arrow(28)}<div class="txt"><div class="h">Machine 3A · <span class="v">${fmt(live.dist)} m</span></div><div class="d">Open finding from shift A</div></div></div>`, enter() { live.dist = 14; live.walking = true; } }),
+        ] },
+        { tag: 'on the asset', who: 'Dev · shift B', title: 'See the finding on 3A', phases: [
+          () => ({ html: reticle('info') + `<div class="under-reticle" style="--c:${C.info}"><div class="h">Look at the tag on 3A</div><div class="d">The finding is pinned to this machine, not to a notebook</div></div>`, enter() { live.walking = false; } }),
+          () => {
+            const worse = live.vib > live.finding + 0.2;
+            return { html: reticle('warn', true) + `<div class="under-reticle" style="--c:${C.warn}"><div class="h">Maya 18:42: <span class="v">${fmt(live.finding, 1)}</span> → now <span class="v">${fmt(live.vib, 1)} mm/s</span> ${worse ? '↑' : '→'}</div><div class="d">"Bearing noise, drive side" · photo attached</div></div>` + edge('r', 'ok', '3B<br>no findings') };
+          },
+        ] },
+        { tag: 'escalate', who: 'Dev · shift B', title: 'Bring in the expert', phases: [
+          () => ({ html: card('info', '☎', 'Priya sees 3A, both readings and the photo', 'Same packet, same asset, on her laptop') + `<div class="caption"><b>Priya:</b> It is trending up. Lock it out and swap the drive-side bearing before restart.</div>` }),
+        ] },
+        { tag: 'verified step', who: 'Dev · shift B', title: 'Stop 3A and verify', phases: [
+          () => ({ html: card(live.rpm < 5 ? 'ok' : 'info', live.rpm < 5 ? '✓' : '›', live.rpm < 5 ? 'Spindle stopped · verified' : 'Stop the spindle', `Reading <span class="v">${fmt(live.rpm)} rpm</span> → 0`, bar(100 - live.rpm / 12, live.rpm < 5 ? 'ok' : 'info')), enter() { live.rpmTarget = 0; } }),
+        ] },
+        { tag: 'resume', who: 'Dev · shift B', title: 'Finish the rounds', phases: [
+          () => ({ html: card('info', '›', 'Rounds 4/6 · resume where Maya stopped', 'Pump P-201 next · 9 m') }),
+        ] },
+        { tag: 'done', who: 'Dev · shift B', title: 'Close out', phases: [
+          () => ({ html: card('ok', '✓', 'Rounds complete · 2 people · 0 items lost', `1 finding escalated with evidence · handoff took ${elapsed()} end to end`) }),
+        ] },
+      ],
+    },
+
+    cell3: {
+      name: 'Cell 3 changeover', persona: 'Maintenance tech · 2nd shift · Line 2',
+      asset: 'Machine 3A', scene: 'cell3',
+      injects: ['snap', 'wrong', 'hazard', 'setpoint', 'alarm', 'stale', 'expert'],
+      steps: [
+        { tag: 'normal', title: 'Glance: line status', phases: [
+          () => ({ html: card('ok', '✓', 'Line 2 · all running', 'Nothing needs you. Status stays out of the way.'), enter() { Object.assign(live, { rpm: 1200, rpmTarget: 1200, stack: 'ok', fault: 0 }); } }),
+          () => ({ html: card('warn', '!', 'Machine 3A · fault E-17', 'Work order WO-4471: clear jam, change over to product B. Tap to accept.'), enter() { Object.assign(live, { stack: 'warn', fault: 17 }); } }),
+        ] },
+        { tag: 'navigate', title: 'Walk to Cell 3', phases: [
+          () => ({ html: `<div class="main">${arrow(28)}<div class="txt"><div class="h">Cell 3 · <span class="v">${fmt(live.dist)} m</span></div><div class="d">Follow the yellow lane, then right.</div></div></div>`, enter() { live.dist = 12; live.walking = true; } }),
+          () => ({ html: card('ok', '✓', 'You are at Cell 3', 'Checkpoint tag scanned on the floor lane.'), enter() { live.walking = false; live.dist = 0; } }),
+        ] },
+        { tag: 'right asset', title: 'Find the right machine', phases: [
+          () => ({ html: reticle('info') + `<div class="under-reticle" style="--c:${C.info}"><div class="h">Look at the tag on 3A</div><div class="d">3A and 3B look identical. The tag decides.</div></div>` }),
+          () => ({ html: reticle('ok', true) + `<div class="under-reticle" style="--c:${C.ok}"><div class="h">✓ Machine 3A verified</div><div class="d">Fault E-17 · <span class="v">${fmt(live.rpm)} rpm</span></div></div>` + edge('r', 'bad', 'NOT 3B<br>on your right') }),
+        ] },
+        { tag: 'verified step', title: 'Make it safe', phases: [
+          () => ({ html: card(live.rpm < 5 ? 'ok' : 'info', live.rpm < 5 ? '✓' : '›', live.rpm < 5 ? 'Spindle stopped' : 'Stop the spindle', `Use the machine's own switch. Reading: <span class="v">${fmt(live.rpm)} rpm</span> → 0`, bar(100 - live.rpm / 12, live.rpm < 5 ? 'ok' : 'info')) }),
+          () => ({ html: card(live.rpm < 5 ? 'ok' : 'info', live.rpm < 5 ? '✓' : '›', live.rpm < 5 ? 'Spindle stopped · verified' : 'Waiting for 0 rpm', `Next step unlocks only on the live reading. <span class="v">${fmt(live.rpm)} rpm</span>`, bar(100 - live.rpm / 12, live.rpm < 5 ? 'ok' : 'info')), enter() { live.rpmTarget = 0; } }),
+        ] },
+        { tag: 'panel', title: 'Clear the fault', phases: [
+          () => ({ html: `<div class="main" style="--c:${C.info}">${panel(8)}<div class="txt"><div class="h">Press RESET</div><div class="d">Bottom-right key on the panel. Fault <span class="v">E-${live.fault}</span></div></div></div>` }),
+          () => ({ html: `<div class="main" style="--c:${C.ok}">${panel(8, 'ok')}<div class="txt"><div class="h">✓ Fault cleared</div><div class="d">Panel reports <span class="v">E-0</span></div></div></div>`, enter() { live.fault = 0; } }),
+        ] },
+        { tag: 'panel setup', title: 'Recipe → B', phases: [
+          () => ({ html: `<div class="main" style="--c:${C.info}">${panel(0)}<div class="txt"><div class="h">Recipe <span class="v">${live.recipe}</span> → B</div><div class="d">Top-left key. 1 of 3 settings.</div></div></div>` }),
+          () => ({ html: `<div class="main" style="--c:${C.ok}">${panel(0, 'ok')}<div class="txt"><div class="h">✓ Recipe B</div><div class="d">1 of 3 settings.</div></div></div>`, enter() { live.recipe = 'B'; } }),
+        ] },
+        { tag: 'error check', title: 'Speed → 120 rpm', phases: [
+          (s) => {
+            const bad = live.speed !== 120 && live.speedTouched;
+            return { html: `<div class="main" style="--c:${bad ? C.bad : C.info}">${panel(2, bad ? 'bad' : 'info')}<div class="txt"><div class="h">${bad ? `✕ Speed <span class="v">${live.speed}</span>, spec 120` : `Speed <span class="v">${live.speed}</span> → 120 rpm`}</div><div class="d">${bad ? 'Restart is blocked until it matches recipe B.' : 'Dial, top-right. 2 of 3 settings.'}</div></div></div>` };
+          },
+          () => ({ html: `<div class="main" style="--c:${C.ok}">${panel(2, 'ok')}<div class="txt"><div class="h">✓ Speed 120 rpm</div><div class="d">Matches recipe B. 2 of 3 settings.</div></div></div>`, enter() { live.speed = 120; } }),
+        ] },
+        { tag: 'panel setup', title: 'Heater → 180 °C', phases: [
+          () => ({ html: `<div class="main" style="--c:${C.info}">${panel(5)}<div class="txt"><div class="h">Heater <span class="v">${live.heater}</span> → 180 °C</div><div class="d">Right-middle dial. 3 of 3 settings.</div></div></div>` }),
+          () => ({ html: `<div class="main" style="--c:${C.ok}">${panel(5, 'ok')}<div class="txt"><div class="h">✓ Heater 180 °C</div><div class="d">All settings match recipe B.</div></div></div>`, enter() { live.heater = 180; } }),
+        ] },
+        { tag: 'verified step', title: 'Restart and verify', phases: [
+          () => ({ html: card('info', '›', 'Switch the spindle on', `Reading: <span class="v">${fmt(live.rpm)} rpm</span> → 120`, bar(live.rpm / 1.2, 'info')) }),
+          () => ({ html: card(live.rpm > 110 ? 'ok' : 'info', live.rpm > 110 ? '✓' : '›', live.rpm > 110 ? 'Running · stack light green' : 'Spinning up…', `<span class="v">${fmt(live.rpm)} rpm</span>`, bar(live.rpm / 1.2, live.rpm > 110 ? 'ok' : 'info')), enter() { live.rpmTarget = 120; live.stack = 'ok'; } }),
+        ] },
+        { tag: 'done', title: 'Close out', phases: [
+          () => ({ html: card('ok', '✓', 'WO-4471 complete', `9 steps · ${elapsed()} · each step logged with asset, time and how it was verified. No video.`) }),
+        ] },
+      ],
+    },
+
+    nuclear: {
+      name: 'Nuclear outage clearance', persona: 'Equipment operator · refuelling outage · Unit 1',
+      asset: '1-RH-V-023A', scene: 'nuclear',
+      injects: ['snap', 'wrong', 'hazard', 'alarm', 'stale', 'expert'],
+      steps: [
+        { tag: 'normal', title: 'Rounds: 3 gauges', phases: [
+          () => ({ html: card('info', '›', 'Rounds 1/3 · PT-101', `Expect 40–60 psi. Reading <span class="v">${live.gauge.pt} psi</span>`) }),
+          () => ({ html: card('ok', '✓', 'PT-101 · 52 psi logged', 'Rounds 2/3 next: TT-204') }),
+          () => ({ html: card('ok', '✓', 'TT-204 · 85 °C logged', 'Rounds 3/3 next: LT-301') }),
+          () => ({ html: card('warn', '!', 'LT-301 · 38% · below 40–70%', 'Out of band. Logged and sent to the control room.') }),
+        ] },
+        { tag: 'downtime', title: 'Accept clearance', phases: [
+          () => ({ html: card('info', '›', 'Clearance C-2291', 'Close and tag 1-RH-V-023A (train A) for pump maintenance. Tap to accept.') }),
+        ] },
+        { tag: 'navigate', title: 'Low-dose route to Rm 114', phases: [
+          () => ({ html: `<div class="main">${arrow(-20)}<div class="txt"><div class="h">Room 114 · <span class="v">${fmt(live.dist)} m</span></div><div class="d">Route keeps you 3 m from the hot spot on the right.</div></div></div>`, enter() { live.dist = 9; live.walking = true; live.inRCA = true; } }),
+        ] },
+        { tag: 'hazardous', title: 'Dose rate rises', phases: [
+          () => ({ html: card('warn', '!', `Dose rate <span class="v">${fmt(live.doseRate)} µSv/h</span>`, 'Rising. Hot spot 2 m to your right. Keep left of the tape.'), enter() { live.walking = false; live.prox = 2.2; } }),
+          () => ({ html: card('ok', '✓', 'Back in low-dose path', `<span class="v">${fmt(live.doseRate)} µSv/h</span> · stay time is fine`), enter() { live.prox = 6; } }),
+        ] },
+        { tag: 'right asset', title: 'Find valve 023A', phases: [
+          () => ({ html: reticle('info') + `<div class="under-reticle" style="--c:${C.info}"><div class="h">Look at the tag on 023A</div><div class="d">Trains A and B are mirror images.</div></div>` }),
+          () => ({ html: reticle('ok', true) + `<div class="under-reticle" style="--c:${C.ok}"><div class="h">✓ 1-RH-V-023A · train A</div><div class="d">Position <span class="v">${live.valveA}</span></div></div>` + edge('r', 'bad', 'NOT 023B<br>train B, right') }),
+        ] },
+        { tag: 'verified step', title: 'Close the valve', phases: [
+          () => ({ html: card('info', '›', 'Close 023A · clockwise', `Position sensor: <span class="v">${live.valveA}</span>`) }),
+          () => ({ html: card('ok', '✓', '023A CLOSED · verified', 'Read from the position switch, not ticked by hand.'), enter() { live.valveA = 'CLOSED'; } }),
+        ] },
+        { tag: 'lockout/tagout', title: 'Hang and match the tag', phases: [
+          () => ({ html: reticle('info') + `<div class="under-reticle" style="--c:${C.info}"><div class="h">Hang tag C-2291-03, then look at it</div><div class="d">The tag must match the component it hangs on.</div></div>` }),
+          () => ({ html: reticle('ok', true) + `<div class="under-reticle" style="--c:${C.ok}"><div class="h">✓ Tag C-2291-03 on 023A</div><div class="d">Tag and component match the clearance.</div></div>` }),
+        ] },
+        { tag: 'verified step', title: 'Independent verification', phases: [
+          () => ({ html: card('info', '›', 'Waiting for independent verifier', 'J. Ortiz checks position and tag on their own device.') }),
+          () => ({ html: card('ok', '✓', 'Verified by J. Ortiz', 'Two-person check logged.') }),
+        ] },
+        { tag: 'error state', title: 'Alarm on the other train', phases: [
+          () => ({ html: card('info', '›', 'Clearance hung', 'Leave the area by the low-dose route.') + edge('r', 'bad', 'ALARM 1-RH-P-02B<br>low flow · train B<br>not your clearance') }),
+        ] },
+        { tag: 'done', title: 'Close out', phases: [
+          () => ({ html: card('ok', '✓', 'C-2291 hung and verified', `${elapsed()} · dose <span class="v">${fmt(live.dose, 1)} µSv</span> of 50 µSv permit limit`) }),
+        ] },
+      ],
+    },
+  };
+
+  // ---------------- state ----------------
+  const q = new URLSearchParams(location.search);
+  let jobKey = JOBS[q.get('job')] ? q.get('job') : 'handoff';
+  let si = 0, pi = 0, t0 = Date.now();
+  const flags = { snap: false, wrong: false, hazard: false, setpoint: false, alarm: false, stale: false, expert: false };
+  const INJ = {
+    snap: 'Glasses camera: check', wrong: 'Wrong asset', hazard: 'Hazard', setpoint: 'Wrong setting', alarm: 'Alarm elsewhere', stale: 'Sensor drops', expert: 'Call expert',
+  };
+  const elapsed = () => { const s = Math.round((Date.now() - t0) / 1000); return `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s`; };
+  const job = () => JOBS[jobKey];
+
+  // ---------------- overlays (things that go wrong) ----------------
+  function overlays(base) {
+    const J = job();
+    if (flags.stale) {
+      // never show a last-known value as live
+      return `<div class="stale-on">${base.replace(/<span class="v">[^<]*<\/span>/g, '<span class="v">--</span>')}</div>` +
+        `<div class="toast" style="--c:${C.dim}">◌ DATA STALE · ${fmt(live.age, 0)} s · do not rely on readings</div>`;
+    }
+    if (flags.hazard) {
+      const h = jobKey !== 'nuclear'
+        ? card('bad', '✕', 'HANDS CLEAR', `Spindle running · hand <span class="v">${fmt(live.prox)} cm</span> from it`)
+        : card('bad', '✕', `HIGH DOSE RATE <span class="v">${fmt(live.doseRate)} µSv/h</span>`, 'Step back left to the low-dose area ‹ 3 m');
+      return `<div class="frame"></div>` + h;
+    }
+    let html = base;
+    if (flags.snap) html = snapCard();
+    if (flags.wrong) html = reticle('bad', true) + `<div class="under-reticle" style="--c:${C.bad}"><div class="h">✕ WRONG ${jobKey !== 'nuclear' ? 'MACHINE · 3B' : 'VALVE · 023B'}</div><div class="d">Your target is on the left.</div></div>` + edge('l', 'ok', jobKey !== 'nuclear' ? '3A<br>this way' : '023A<br>this way');
+    if (flags.alarm) html += `<div class="toast" style="--c:${C.warn}">! ${jobKey !== 'nuclear' ? 'Alarm on 3B · over-temp · not your machine' : 'Alarm on train B · not your clearance'}</div>`;
+    if (flags.expert) html += `<div class="toast" style="--c:${C.info}">☎ Priya (remote expert) · sees ${esc(J.asset)} through your camera</div>` +
+      `<div class="caption"><b>Priya:</b> ${esc(caption())}</div>`;
+    if (listening) html += `<div class="mic">● listening</div>`;
+    return html;
+  }
+
+  // ---------------- camera check (glasses camera → vision → verdict) ----------------
+  let snapAt = 0;
+  function snapCard() {
+    const t = Date.now() - snapAt;
+    if (t < 1800) return reticle('info', true) + `<div class="under-reticle" style="--c:${C.info}"><div class="h">Reading what you see…</div><div class="d">Photo from the glasses camera, checked against the spec</div></div>`;
+    if (jobKey === 'handoff') return card('bad', '✕', `3A vibration <span class="v">${fmt(live.vib, 1)} mm/s</span> · limit 4.5`, 'Read from the glasses camera · photo saved to the finding');
+    if (jobKey === 'cell3') {
+      const ok = live.speed === 120 && live.recipe === 'B' && live.heater === 180;
+      const bad = live.speed !== 120 ? `Speed ${live.speed} rpm, spec 120` : live.recipe !== 'B' ? `Recipe ${live.recipe}, spec B` : `Heater ${live.heater} °C, spec 180`;
+      return ok ? card('ok', '✓', 'Panel matches recipe B', 'Read from the glasses camera · logged as evidence')
+                : card('bad', '✕', bad, 'Read from the glasses camera. Fix before restart.');
+    }
+    return card(live.valveA === 'CLOSED' ? 'ok' : 'warn', live.valveA === 'CLOSED' ? '✓' : '!', `Tag reads 1-RH-V-023A · ${live.valveA === 'CLOSED' ? 'handle closed' : 'handle OPEN'}`, 'Read from the glasses camera. Cameras off in protected areas: QR + manual check still works.');
+  }
+  const CAPTIONS = {
+    handoff: ['Pull up what Maya logged first.', 'It is trending up. Lock it out before you touch it.', 'Swap the drive-side bearing, then log it.'],
+    cell3: ['Check the speed dial first, it is usually the culprit.', 'Good. Now the heater, right-middle dial.', 'Restart when all three are green.'],
+    nuclear: ['Stay left of the tape, the hot spot is on your right.', 'Confirm you are on train A before you touch anything.', 'Wait for Ortiz to verify before you leave.'],
+  };
+  const caption = () => CAPTIONS[jobKey][si % 3];
+
+  // ---------------- speaker: spoken alerts + tones ----------------
+  let soundOn = false, actx = null;
+  function tone(freq = 880, ms = 140, n = 1) {
+    if (!soundOn) return;
+    try {
+      actx ||= new (window.AudioContext || window.webkitAudioContext)();
+      for (let i = 0; i < n; i++) {
+        const o = actx.createOscillator(), gn = actx.createGain(); const t = actx.currentTime + i * (ms / 1000 + 0.08);
+        o.frequency.value = freq; gn.gain.setValueAtTime(0.18, t); gn.gain.exponentialRampToValueAtTime(0.001, t + ms / 1000);
+        o.connect(gn).connect(actx.destination); o.start(t); o.stop(t + ms / 1000);
+      }
+    } catch {}
+  }
+  function say(text) {
+    if (!soundOn || !('speechSynthesis' in window)) return;
+    speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.rate = 1.05; speechSynthesis.speak(u);
+  }
+  const SPOKEN = {
+    hazard: () => (jobKey !== 'nuclear' ? 'Hands clear. Spindle running.' : 'High dose rate. Step back left.'),
+    wrong: () => (jobKey !== 'nuclear' ? 'Wrong machine. Your target is on the left.' : 'Wrong valve. Train A is on the left.'),
+    setpoint: () => 'Speed does not match the recipe.',
+    alarm: () => 'Alarm on the other unit. Not yours.',
+    stale: () => 'Data stale. Do not rely on readings.',
+    expert: () => 'Calling Priya.',
+    snap: () => 'Checking.',
+  };
+  function announce(f) { tone(f === 'hazard' ? 440 : f === 'stale' ? 330 : 660, f === 'hazard' ? 220 : 140, f === 'hazard' ? 3 : 1); say(SPOKEN[f]()); }
+
+  // ---------------- mic: voice commands ----------------
+  let listening = false, rec = null;
+  function startVoice(btn) {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { btn.textContent = 'Mic: not available in this browser'; return; }
+    rec = new SR(); rec.continuous = true; rec.interimResults = false; rec.lang = 'en-US';
+    rec.onresult = (e) => {
+      const said = e.results[e.results.length - 1][0].transcript.toLowerCase();
+      if (/\b(next|confirm|done|okay|ok)\b/.test(said)) go(1);
+      else if (/\b(back|previous)\b/.test(said)) go(-1);
+      else if (/check|panel|read|look/.test(said)) toggleFlag('snap');
+      else if (/finding|hand ?off|handover/.test(said)) go(1);
+      else if (/expert|help|call/.test(said)) toggleFlag('expert');
+    };
+    rec.onerror = (e) => { listening = false; btn.textContent = e.error === 'not-allowed' ? 'Mic: blocked here' : 'Mic: voice commands'; btn.setAttribute('aria-pressed', 'false'); render(); };
+    rec.onend = () => { if (listening) try { rec.start(); } catch {} };
+    try { rec.start(); listening = true; btn.setAttribute('aria-pressed', 'true'); } catch {}
+    render();
+  }
+
+  // ---------------- render ----------------
+  function render() {
+    const J = job(), step = J.steps[si];
+    const ctx = { live };
+    let base = step.phases[pi](ctx).html;
+    let html = overlays(base);
+    // chips: asset + data age (top-left), step progress (top-right), persistent dose (bottom-right, nuclear)
+    const total = J.steps.length;
+    const pips = J.steps.map((_, i) => `<i class="${i < si ? 'done' : i === si ? 'on' : ''}"></i>`).join('');
+    const ageTxt = flags.stale ? `<span class="dot stale"></span>${esc(J.asset)} · stale` : `<span class="dot"></span>${esc(J.asset)} · ${fmt(live.age, 1)} s`;
+    html += `<div class="chip tl" style="color:var(--dim)">${ageTxt}</div>`;
+    html += `<div class="chip tr" style="color:var(--dim)"><span class="v">${si + 1}/${total}</span><span class="pips">${pips}</span></div>`;
+    if (step.who) html += `<div class="chip bl" style="color:var(--info)">${esc(step.who)}</div>`;
+    if (jobKey === 'nuclear' && live.inRCA) {
+      const pct = (live.dose / 50) * 100;
+      const tone = flags.hazard || live.doseRate > 200 ? 'warn' : 'ok';
+      const stay = live.doseRate > 0 ? Math.max(0, ((50 - live.dose) / live.doseRate) * 60) : 999;
+      html += `<div class="chip br" style="color:var(--dim);--c:${C[tone]}"><span>Dose <span class="v">${fmt(live.dose, 1)}</span>/50 µSv</span><span class="dosebar"><b style="width:${pct}%"></b></span><span class="v">${flags.stale ? '--' : fmt(stay)}</span> min</div>`;
+    }
+    hud.innerHTML = html;
+    // rail
+    $('steps').innerHTML = J.steps.map((s, i) => `<li><button class="${i === si ? 'cur' : i < si ? 'past' : ''}" data-i="${i}"><span class="n">${String(i + 1).padStart(2, '0')}</span><span>${esc(s.title)}</span><span class="tag">${esc(s.tag)}</span></button></li>`).join('');
+    $('spec').textContent = `${J.persona}`;
+    drawScene();
+  }
+
+  function enterPhase() { const r = job().steps[si].phases[pi](); r.enter && r.enter(); }
+  function go(dir) {
+    const J = job();
+    if (dir > 0) {
+      if (pi < J.steps[si].phases.length - 1) pi++;
+      else if (si < J.steps.length - 1) { si++; pi = 0; }
+    } else {
+      if (pi > 0) pi--;
+      else if (si > 0) { si--; pi = J.steps[si].phases.length - 1; }
+    }
+    if (dir > 0 && flags.wrong) flags.wrong = false;
+    if (flags.snap) flags.snap = false;
+    tone(dir > 0 ? 990 : 520, 70);
+    enterPhase(); render(); syncInject();
+  }
+  function jump(i) { si = i; pi = 0; enterPhase(); render(); }
+
+  function setJob(k) {
+    jobKey = k; si = 0; pi = 0; t0 = Date.now();
+    Object.keys(flags).forEach((f) => (flags[f] = false));
+    Object.assign(live, { rpm: 1200, rpmTarget: 1200, fault: 17, recipe: 'A', speed: 100, speedTouched: false, heater: 160, stack: 'warn', dist: 12, prox: 80, doseRate: 2, dose: 0, valveA: 'OPEN', inRCA: false, walking: false, vib: 7.1, finding: 7.1 });
+    $('jobs').innerHTML = Object.entries(JOBS).map(([key, j]) => `<button data-job="${key}" aria-pressed="${key === jobKey}">${esc(j.name)}</button>`).join('');
+    $('inject').innerHTML = job().injects.map((f) => `<button data-f="${f}" aria-pressed="false">${INJ[f]}</button>`).join('');
+    enterPhase(); render();
+  }
+  function syncInject() { document.querySelectorAll('[data-f]').forEach((b) => b.setAttribute('aria-pressed', String(flags[b.dataset.f]))); }
+
+  // ---------------- see-through scene (stand-in for the real world) ----------------
+  function drawScene() {
+    if (job().scene === 'cell3') {
+      const light = (x, on) => `<rect x="${x}" y="300" width="40" height="70" rx="6" fill="#222"/><circle cx="${x + 20}" cy="${on === 'ok' ? 352 : 318}" r="13" fill="${on === 'ok' ? '#3ee07a' : '#ffb020'}"/>`;
+      const machine = (x, label, stack) => `
+        <rect x="${x}" y="370" width="420" height="420" rx="14" fill="#3b4652"/><rect x="${x}" y="370" width="420" height="40" fill="#4a5664"/>
+        <rect x="${x + 40}" y="450" width="190" height="130" rx="8" fill="#10161c"/>
+        ${[0, 1, 2].map((r) => [0, 1, 2].map((c) => `<rect x="${x + 52 + c * 60}" y="${462 + r * 38}" width="48" height="28" rx="4" fill="#2b3946"/>`).join('')).join('')}
+        <circle cx="${x + 320}" cy="520" r="62" fill="#26303a"/><circle cx="${x + 320}" cy="520" r="22" fill="#55606c"/>
+        <rect x="${x + 270}" y="640" width="110" height="80" rx="6" fill="#f2f2f2"/><rect x="${x + 282}" y="650" width="44" height="44" fill="#111"/><text x="${x + 334}" y="680" font-size="22" font-family="monospace" fill="#111">${label}</text>
+        ${light(x + 360, stack)}`;
+      scene.innerHTML = `<rect width="1600" height="1000" fill="#20262c"/><rect y="760" width="1600" height="240" fill="#2c3136"/>
+        <polygon points="560,1000 760,760 840,760 1040,1000" fill="#d6b400" opacity=".75"/>
+        ${machine(280, '3A', live.stack)}${machine(900, '3B', 'ok')}
+        <rect x="900" y="200" width="280" height="60" rx="6" fill="#111"/><text x="920" y="242" font-size="34" font-family="sans-serif" fill="#ddd">CELL 3</text>`;
+    } else {
+      const valve = (x, tag, closed) => `
+        <rect x="${x}" y="470" width="90" height="120" rx="10" fill="#9aa3ab"/>
+        <rect x="${x + 20}" y="${closed ? 420 : 445}" width="${closed ? 50 : 160}" height="22" rx="6" fill="#d33" transform="${closed ? `rotate(90 ${x + 45} 450)` : ''}"/>
+        <rect x="${x - 10}" y="610" width="120" height="70" rx="6" fill="#f2f2f2"/><rect x="${x}" y="620" width="40" height="40" fill="#111"/><text x="${x + 46}" y="650" font-size="18" font-family="monospace" fill="#111">${tag}</text>`;
+      scene.innerHTML = `<rect width="1600" height="1000" fill="#262b2f"/><rect y="760" width="1600" height="240" fill="#30353a"/>
+        <rect x="0" y="500" width="1600" height="60" fill="#6c757d"/><rect x="0" y="420" width="1600" height="14" fill="#555"/>
+        ${valve(430, '023A', live.valveA === 'CLOSED')}${valve(1030, '023B', false)}
+        <rect x="1250" y="640" width="220" height="160" fill="#c9a400"/><rect x="1250" y="640" width="220" height="30" fill="#b0127a"/>
+        <text x="1268" y="740" font-size="26" font-family="sans-serif" fill="#111">HOT SPOT</text><text x="1268" y="772" font-size="18" font-family="sans-serif" fill="#111">SIMULATED</text>
+        <polyline points="1180,1000 1180,820 1600,820" fill="none" stroke="#b0127a" stroke-width="10" stroke-dasharray="30 18"/>
+        <rect x="140" y="200" width="200" height="140" rx="10" fill="#e6e6e6"/><circle cx="240" cy="270" r="50" fill="#fff" stroke="#333" stroke-width="6"/><text x="190" y="370" font-size="22" fill="#ddd" font-family="monospace">PT-101</text>`;
+    }
+  }
+
+  // ---------------- simulation tick ----------------
+  setInterval(() => {
+    live.age = flags.stale ? live.age + 0.25 : 0.2 + Math.random() * 0.4;
+    if (flags.stale) return render();
+    live.rpm += (live.rpmTarget - live.rpm) * 0.18; if (Math.abs(live.rpm - live.rpmTarget) < 2) live.rpm = live.rpmTarget;
+    if (live.walking && live.dist > 1) live.dist = Math.max(1, live.dist - 0.25);
+    if (jobKey === 'handoff') live.vib = Math.min(9.5, live.vib + (si >= 4 ? 0.004 : 0.0005) + (Math.random() - 0.5) * 0.02);
+    if (jobKey !== 'nuclear') live.prox = flags.hazard ? 14 + Math.random() * 6 : 80;
+    if (jobKey === 'nuclear' && live.inRCA) {
+      const d = flags.hazard ? 0.8 : live.prox || 6;              // metres from hot spot
+      live.doseRate = Math.min(900, 900 / (d * d)) + Math.random() * 2; // simulated inverse square
+      live.dose += live.doseRate * (0.25 / 3600) * 20;             // x20 so the demo moves
+    }
+    render();
+  }, 250);
+
+  // ---------------- wiring ----------------
+  $('next').onclick = () => go(1);
+  $('back').onclick = () => go(-1);
+  $('steps').onclick = (e) => { const b = e.target.closest('[data-i]'); if (b) jump(Number(b.dataset.i)); };
+  $('jobs').onclick = (e) => { const b = e.target.closest('[data-job]'); if (b) setJob(b.dataset.job); };
+  $('inject').onclick = (e) => { const b = e.target.closest('[data-f]'); if (b) toggleFlag(b.dataset.f); };
+  function toggleFlag(f) {
+    flags[f] = !flags[f];
+    if (flags[f]) announce(f);
+    if (f === 'snap' && flags[f]) { snapAt = Date.now(); setTimeout(() => { if (flags.snap) { const bad = jobKey === 'cell3' && live.speed !== 120; tone(bad ? 440 : 990, 160, bad ? 2 : 1); say(bad ? `Speed ${live.speed}. Spec is 120.` : 'Matches.'); } }, 1800); }
+    if (f === 'setpoint') { live.speed = flags[f] ? 210 : 100; live.speedTouched = flags[f]; const i = job().steps.findIndex((s) => s.tag === 'error check'); if (flags[f] && i >= 0) { si = i; pi = 0; } }
+    if (f === 'stale' && flags[f]) live.age = 3.1;
+    syncInject(); render();
+  }
+  $('soundBtn').onclick = (e) => { soundOn = !soundOn; e.currentTarget.setAttribute('aria-pressed', String(soundOn)); if (soundOn) { tone(990, 90); say('Sound on'); } };
+  $('voiceBtn').onclick = (e) => { if (listening) { listening = false; rec && rec.stop(); e.currentTarget.setAttribute('aria-pressed', 'false'); render(); } else startVoice(e.currentTarget); };
+  $('seeThru').onclick = (e) => { const on = lens.classList.toggle('display-only'); e.currentTarget.setAttribute('aria-pressed', String(!on)); };
+  $('m6Btn').onclick = (e) => { const on = lens.classList.toggle('m6'); e.currentTarget.setAttribute('aria-pressed', String(on)); };
+  if (q.get('m6') === '1') { lens.classList.add('m6'); $('m6Btn').setAttribute('aria-pressed', 'true'); }
+  $('monoBtn').onclick = (e) => { const on = hud.classList.toggle('mono-hud'); e.currentTarget.setAttribute('aria-pressed', String(on)); };
+  addEventListener('keydown', (e) => {
+    if (e.target.closest && e.target.closest('button') && (e.key === 'Enter' || e.key === ' ')) return;
+    if (['Enter', ' ', 'ArrowRight', 'PageDown', 'MediaPlayPause'].includes(e.key)) { e.preventDefault(); go(1); }
+    if (['ArrowLeft', 'PageUp'].includes(e.key)) go(-1);
+    if (e.key === 'e' || e.key === 'E') toggleFlag('expert');
+  });
+
+  // ?hud=1 → display-only, full screen, for loading on the glasses themselves
+  if (q.get('hud') === '1') {
+    document.querySelector('header.top').hidden = true; document.querySelector('.rail').hidden = true; document.querySelector('.below').hidden = true;
+    document.body.style.padding = '0'; document.querySelector('.wrap').style.display = 'block'; lens.classList.add('display-only');
+    lens.style.borderRadius = '0'; lens.style.border = '0'; lens.style.height = '100vh'; lens.style.aspectRatio = 'auto';
+    document.querySelector('.fov').style.inset = '0'; hud.style.inset = '0';
+  }
+  if (q.get('mono') === '1') { hud.classList.add('mono-hud'); $('monoBtn').setAttribute('aria-pressed', 'true'); }
+
+  setJob(jobKey);
+})();
+</script>
