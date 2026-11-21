@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Voice-over Display</title>
+<style>
+  /* Glasses: black = see-through. Plain CSS for the glasses' Chrome 74 WebView (no inset / flex gap).
+     Content starts at 11vh: the glasses' status bar covers the top ~35 px. */
+  html, body { margin: 0; height: 100%; background: #000; color: #fff; overflow: hidden; font: 600 22px/1.25 system-ui, sans-serif; }
+  #stage { position: absolute; top: 11vh; left: 6vw; right: 6vw; bottom: 12vh; transition: opacity .15s; }
+  #stage.hidden { opacity: 0; }
+  #k { font-size: 4.2vmin; letter-spacing: .12em; color: #22c55e; }
+  #h { font-size: 8.4vmin; line-height: 1.15; margin-top: 2vh; }
+  #d { font-size: 5vmin; line-height: 1.35; font-weight: 500; color: #b4b9c2; margin-top: 3vh; }
+  #spk { position: absolute; top: 11vh; right: 6vw; font-size: 4.2vmin; color: #22c55e; opacity: 0; }
+  #spk.on { opacity: 1; animation: pulse 1s infinite; }
+  @keyframes pulse { 50% { opacity: .35; } }
+  #dots { position: absolute; bottom: 5vh; left: 0; right: 0; text-align: center; }
+  #dots i { display: inline-block; margin: 0 .8vmin; width: 2vmin; height: 2vmin; border-radius: 50%; border: 2px solid #6b7280; }
+  #dots i.done { background: #6b7280; }
+  #dots i.on { background: #fff; border-color: #fff; }
+  #hint { position: absolute; bottom: 10vh; left: 0; right: 0; text-align: center; font-size: 4vmin; color: #f59e0b; display: none; }
+  #conn { position: absolute; bottom: 2vh; right: 3vw; font: 500 12px system-ui; color: #ef4444; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="k"></div>
+  <div id="h"></div>
+  <div id="d"></div>
+</div>
+<div id="spk">🔊 speaking</div>
+<div id="dots"></div>
+<div id="hint">Tap once to turn on sound</div>
+<div id="conn"></div>
+<script>
+// Voice-over: on every step change, play "Step N of M. <title>. <description>".
+// Sound: the server's voice (/api/tts, pre-generated, instant), else the glasses app's ARWAGlasses.say,
+// else the browser's speechSynthesis. ?vo=0 turns it off.
+var q = new URLSearchParams(location.search), VO = q.get('vo') !== '0';
+var $ = function (id) { return document.getElementById(id); };
+var audio = new Audio(), spokenKey = null, lastSeq = -1, blocked = false, pendingText = '';
+
+function setSpeaking(on) { $('spk').className = on ? 'on' : ''; }
+audio.onplaying = function () { setSpeaking(true); };
+audio.onended = audio.onpause = function () { setSpeaking(false); };
+
+function fallback(text) {
+  if (window.ARWAGlasses && ARWAGlasses.say) { try { ARWAGlasses.say(text); return; } catch (e) {} }
+  if (window.speechSynthesis) { speechSynthesis.cancel(); speechSynthesis.speak(new SpeechSynthesisUtterance(text)); }
+}
+function speak(text) {
+  if (!VO || !text) return;
+  pendingText = text;
+  if (window.speechSynthesis) speechSynthesis.cancel();
+  audio.onerror = function () { setSpeaking(false); fallback(text); };
+  audio.src = '/api/tts?text=' + encodeURIComponent(text);
+  var p = audio.play();
+  if (p && p.catch) p.catch(function (e) {
+    if (e && e.name === 'NotAllowedError') { blocked = true; $('hint').style.display = 'block'; } // browser wants one tap first
+    else if (e && e.name !== 'AbortError') fallback(text);
+  });
+}
+// A desktop browser blocks sound until the first tap or key; the glasses app allows it from the start.
+function unlock() { if (blocked) { blocked = false; $('hint').style.display = 'none'; speak(pendingText); } }
+addEventListener('pointerdown', unlock);
+
+function render(s) {
+  var st = s.steps[s.step], n = s.steps.length;
+  $('k').textContent = 'STEP ' + (s.step + 1) + ' / ' + n;
+  $('h').textContent = st.title;
+  $('d').textContent = st.description;
+  $('dots').innerHTML = s.steps.map(function (_, i) { return '<i class="' + (i < s.step ? 'done' : i === s.step ? 'on' : '') + '"></i>'; }).join('');
+  $('stage').className = s.visible ? '' : 'hidden';
+
+  // Speak when the step changes (including the first time), or when someone says "repeat".
+  var repeat = s.last && s.last.cmd === 'repeat' && s.seq !== lastSeq && lastSeq !== -1;
+  if (s.step !== spokenKey || repeat) { spokenKey = s.step; speak(st.speech); }
+  lastSeq = s.seq;
+}
+
+var es = new EventSource('/events');
+es.onmessage = function (e) { $('conn').textContent = ''; render(JSON.parse(e.data)); };
+es.onerror = function () { $('conn').textContent = 'reconnecting…'; };
+
+// Keys: touchpad / ring (the GlassView app turns tap into ArrowRight, double tap into ArrowLeft), keyboard.
+function send(cmd) { fetch('/cmd', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cmd: cmd, source: 'display keys' }) }); }
+addEventListener('keydown', function (e) {
+  unlock();
+  var k = e.key;
+  if (['ArrowRight', 'Enter', ' ', 'PageDown'].indexOf(k) >= 0) send('next');
+  else if (['ArrowLeft', 'PageUp', 'Backspace'].indexOf(k) >= 0) send('back');
+  else if (k === 'r' || k === 'R') send('repeat');
+  else if (k === 'h' || k === 'H') send('hide');
+  else if (k === 's' || k === 'S') send('show');
+});
+</script>
+</body>
+</html>

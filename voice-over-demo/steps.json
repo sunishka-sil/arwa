@@ -1,0 +1,16 @@
+{
+  "_comment": "Demo steps. title = big line on screen, description = how to do it. Both are read aloud as: 'Step N of M. <title>. <description>'. Edit freely; restart the server to re-generate the audio.",
+  "title": "Isolate CB-12 on PDU B2-07",
+  "steps": [
+    { "title": "Go to Row B, Rack 2",
+      "description": "Walk to hall 1, row B, rack 2. Your target is PDU B2-07, the power strip on the left side of the rack, on feed A. Don't touch anything yet." },
+    { "title": "Scan the QR on PDU B2-07",
+      "description": "Use the phone to scan the QR tag on the left PDU. The right PDU, B2-08, looks the same but is the wrong one." },
+    { "title": "Confirm feed B is healthy",
+      "description": "Hold point. When CB-12 opens, feed B on PDU B2-08 carries the whole rack. Its load must be under 50 percent before you go on." },
+    { "title": "Open breaker CB-12",
+      "description": "Switch breaker CB-12 on PDU B2-07 to off. Wait until the current reads zero amps." },
+    { "title": "Tag CB-12 and log complete",
+      "description": "Hang a lockout tag on CB-12 so nobody switches it back on, then log the job as complete." }
+  ]
+}
