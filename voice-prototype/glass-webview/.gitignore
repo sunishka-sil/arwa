@@ -1,0 +1,6 @@
+.gradle/
+build/
+app/build/
+local.properties
+# Vosk model (68 MB): download vosk-model-small-en-us-0.15 from alphacephei.com/vosk/models and unzip here
+app/src/main/assets/model-en-us/

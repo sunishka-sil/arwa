@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Voice Test Display</title>
+<style>
+  /* Glasses rule: black = see-through, so the background is pure black and shapes are bright. */
+  html, body { margin: 0; height: 100%; background: #000; color: #fff; overflow: hidden; font: 600 22px/1.2 system-ui, sans-serif; }
+  #stage { position: absolute; top: 0; right: 0; bottom: 0; left: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity .15s; }
+  #stage.hidden { opacity: 0; }
+  svg { width: 52vmin; height: 52vmin; margin-bottom: 4vh; }
+  #label { font-size: 6vmin; letter-spacing: .04em; }
+  #count { position: absolute; top: 11vh; right: 5vw; font-size: 4vmin; color: #9ca3af; }
+  #dots { position: absolute; bottom: 5vh; left: 0; right: 0; display: flex; justify-content: center; }
+  #dots i { margin: 0 .8vmin; width: 2vmin; height: 2vmin; border-radius: 50%; border: 2px solid #6b7280; }
+  #dots i.on { background: #fff; border-color: #fff; }
+  #toast { position: absolute; top: 11vh; left: 5vw; font-size: 4.5vmin; color: #22c55e; opacity: 0; transition: opacity .2s; }
+  #toast.on { opacity: 1; }
+  #conn { position: absolute; bottom: 2vh; right: 3vw; font: 500 12px system-ui; color: #ef4444; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="count"></div>
+  <svg id="shape" viewBox="-50 -50 100 100"></svg>
+  <div id="label"></div>
+  <div id="dots"></div>
+</div>
+<div id="toast"></div>
+<div id="conn"></div>
+<script>
+// Demo pages. Later each page becomes a PDF page; the commands stay the same.
+var PAGES = [
+  { name: 'Square',   svg: '<rect x="-36" y="-36" width="72" height="72" />' },
+  { name: 'Triangle', svg: '<polygon points="0,-40 40,32 -40,32" />' },
+  { name: 'Circle',   svg: '<circle r="38" />' },
+  { name: 'Star',     svg: '<polygon points="0,-42 10,-13 41,-13 16,5 25,35 0,17 -25,35 -16,5 -41,-13 -10,-13" />' },
+  { name: 'Hexagon',  svg: '<polygon points="38,0 19,33 -19,33 -38,0 -19,-33 19,-33" />' },
+];
+var stage = document.getElementById('stage'), shape = document.getElementById('shape');
+var toast = document.getElementById('toast'), conn = document.getElementById('conn');
+var lastSeq = -1, toastTimer;
+
+function render(s) {
+  var p = PAGES[s.page % PAGES.length];
+  shape.innerHTML = '<g fill="none" stroke="#fff" stroke-width="4" stroke-linejoin="round">' + p.svg + '</g>';
+  document.getElementById('label').textContent = p.name;
+  document.getElementById('count').textContent = (s.page + 1) + ' / ' + s.pages;
+  document.getElementById('dots').innerHTML = Array.from({ length: s.pages }, function (_, i) { return '<i class="' + (i === s.page ? 'on' : '') + '"></i>'; }).join('');
+  stage.classList.toggle('hidden', !s.visible);
+  if (s.last && lastSeq !== -1 && s.seq !== lastSeq) {
+    toast.textContent = '“' + s.last.cmd + '”';
+    toast.classList.add('on');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toast.classList.remove('on'); }, 1200);
+  }
+  lastSeq = s.seq;
+}
+
+var es = new EventSource('/events');
+es.onmessage = function (e) { conn.textContent = ''; render(JSON.parse(e.data)); };
+es.onerror = function () { conn.textContent = 'reconnecting…'; };
+
+// Keyboard / ring / temple touchpad fallback (sent through the server so every page stays in sync).
+function send(cmd) { fetch('/cmd', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cmd: cmd, source: 'display keys' }) }); }
+addEventListener('keydown', function (e) {
+  var k = e.key;
+  if (['ArrowRight', 'Enter', ' ', 'PageDown'].indexOf(k) >= 0) send('next');
+  else if (['ArrowLeft', 'PageUp', 'Backspace'].indexOf(k) >= 0) send('back');
+  else if (k === 's') send('show');
+  else if (k === 'h') send('hide');
+});
+</script>
+</body>
+</html>
