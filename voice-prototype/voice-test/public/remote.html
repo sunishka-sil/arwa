@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Voice Test Remote</title>
+<style>
+  :root { --bg: #0b0f14; --card: #111827; --line: #1f2937; --fg: #e5e7eb; --dim: #9ca3af; --on: #22c55e; --bad: #ef4444; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.45 system-ui, sans-serif; }
+  main { max-width: 720px; margin: 0 auto; padding: 20px 16px 40px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .sub { color: var(--dim); font-size: 14px; margin: 0 0 18px; }
+  #mic { width: 100%; padding: 22px; font: 700 20px system-ui; border: 0; border-radius: 16px; background: #16a34a; color: #fff; cursor: pointer; }
+  #mic.listening { background: var(--bad); animation: pulse 1.4s infinite; }
+  @keyframes pulse { 50% { opacity: .75; } }
+  #status { margin: 10px 0 0; font-size: 14px; color: var(--dim); min-height: 1.4em; }
+  #status.err { color: var(--bad); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px; margin-top: 14px; }
+  .card h2 { font: 600 12px system-ui; letter-spacing: .1em; text-transform: uppercase; color: var(--dim); margin: 0 0 8px; }
+  #heard { font-size: 20px; min-height: 1.5em; word-wrap: break-word; }
+  #heard .interim { color: var(--dim); }
+  #heard b { color: var(--on); }
+  #state { display: flex; gap: 16px; font-size: 18px; font-weight: 600; }
+  #state span { color: var(--dim); font-weight: 400; }
+  .btns { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .btns button { padding: 14px 0; font: 600 16px system-ui; border-radius: 12px; border: 1px solid var(--line); background: #1f2937; color: var(--fg); cursor: pointer; }
+  #log { list-style: none; margin: 0; padding: 0; max-height: 220px; overflow: auto; font: 14px ui-monospace, Menlo, monospace; }
+  #log li { padding: 4px 0; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 8px; }
+  #log li .c { color: var(--on); font-weight: 700; }
+  #log li .t { color: var(--dim); }
+  #preview { width: 100%; aspect-ratio: 4 / 3; border: 0; border-radius: 10px; background: #000; display: block; }
+  .row { display: flex; justify-content: space-between; align-items: center; }
+  label { font-size: 14px; color: var(--dim); }
+  select { background: #1f2937; color: var(--fg); border: 1px solid var(--line); border-radius: 8px; padding: 4px 6px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Voice remote</h1>
+  <p class="sub">Say <b>next</b>, <b>back</b>, <b>show</b> or <b>hide</b>. Each one is sent to the display as soon as it's heard.</p>
+
+  <button id="mic">🎤 Start listening</button>
+  <div id="status"></div>
+
+  <div class="card">
+    <h2>Heard</h2>
+    <div id="heard"></div>
+  </div>
+
+  <div class="card">
+    <div class="row"><h2>Display state</h2><span id="conn" style="font-size:12px"></span></div>
+    <div id="state"></div>
+  </div>
+
+  <div class="card">
+    <h2>Manual (fallback)</h2>
+    <div class="btns">
+      <button data-cmd="back">◂ Back</button><button data-cmd="next">Next ▸</button>
+      <button data-cmd="show">Show</button><button data-cmd="hide">Hide</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Commands sent</h2>
+    <ul id="log"></ul>
+  </div>
+
+  <div class="card">
+    <div class="row"><h2>Display preview</h2>
+      <label>Language <select id="lang"><option>en-US</option><option>en-GB</option><option>en-AU</option><option>en-IN</option></select></label>
+    </div>
+    <iframe id="preview" src="/display" title="Display preview"></iframe>
+  </div>
+</main>
+<script>
+// ---------- keyword matching ----------
+// Common mis-hearings map to the intended command. Add to these lists if testing shows others.
+var WORDS = {
+  next: ['next', 'necks', 'neck', 'nex'],
+  back: ['back', 'bac', 'bach', 'previous'],
+  show: ['show', 'shows', 'showing'],
+  hide: ['hide', 'hyde', 'hides', 'hiding'],
+};
+var LOOKUP = {};
+Object.keys(WORDS).forEach(function (c) { WORDS[c].forEach(function (w) { LOOKUP[w] = c; }); });
+
+function commandsIn(text) {
+  return text.toLowerCase().replace(/[^a-z\s']/g, ' ').split(/\s+/).map(function (w) { return LOOKUP[w]; }).filter(Boolean);
+}
+
+// ---------- sending ----------
+var logEl = document.getElementById('log');
+function send(cmd, source, heardAt) {
+  var t0 = performance.now();
+  fetch('/cmd', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cmd: cmd, source: source }) })
+    .then(function (r) { return r.ok; })
+    .then(function (ok) {
+      var li = document.createElement('li');
+      li.innerHTML = '<span><span class="c">' + cmd + '</span> · ' + source + (ok ? '' : ' · FAILED') + '</span><span class="t">' +
+        new Date().toLocaleTimeString() + ' · ' + Math.round(performance.now() - t0) + ' ms</span>';
+      logEl.prepend(li);
+    })
+    .catch(function () { setStatus('Could not reach the server.', true); });
+}
+document.querySelectorAll('[data-cmd]').forEach(function (b) { b.onclick = function () { send(b.dataset.cmd, 'button'); }; });
+
+// ---------- live state from the server ----------
+var stateEl = document.getElementById('state'), connEl = document.getElementById('conn');
+var es = new EventSource('/events');
+es.onmessage = function (e) {
+  var s = JSON.parse(e.data);
+  connEl.textContent = '● connected'; connEl.style.color = 'var(--on)';
+  stateEl.innerHTML = '<div><span>Page</span> ' + (s.page + 1) + ' / ' + s.pages + '</div><div><span>Display</span> ' + (s.visible ? 'shown' : 'hidden') + '</div>';
+};
+es.onerror = function () { connEl.textContent = '● disconnected'; connEl.style.color = 'var(--bad)'; };
+
+// ---------- speech recognition ----------
+var micBtn = document.getElementById('mic'), statusEl = document.getElementById('status'), heardEl = document.getElementById('heard');
+var langSel = document.getElementById('lang');
+function setStatus(msg, err) { statusEl.textContent = msg; statusEl.className = err ? 'err' : ''; }
+
+var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+var rec = null, listening = false, fired = {};
+
+function esc(s) { return s.replace(/[&<>]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]; }); }
+function highlight(text) { return esc(text).replace(/[a-zA-Z']+/g, function (w) { return LOOKUP[w.toLowerCase()] ? '<b>' + w + '</b>' : w; }); }
+
+if (!SR) {
+  micBtn.disabled = true;
+  setStatus('This browser has no speech recognition. Use Chrome on the Mac or Android, or Safari on iPhone.', true);
+} else if (!window.isSecureContext) {
+  setStatus('The microphone needs HTTPS (or localhost). On a phone, open the https://…:8443/remote address.', true);
+}
+
+function start() {
+  rec = new SR();
+  rec.lang = langSel.value;
+  rec.continuous = true;
+  rec.interimResults = true;   // act on partial results: much faster than waiting for the final one
+  rec.maxAlternatives = 1;
+  fired = {};
+
+  rec.onresult = function (e) {
+    var finalText = '', interimText = '';
+    for (var i = e.resultIndex; i < e.results.length; i++) {
+      var r = e.results[i], text = r[0].transcript;
+      if (r.isFinal) finalText += text; else interimText += text;
+      // Fire each command once per result, even as the partial transcript grows.
+      var cmds = commandsIn(text), done = fired[i] || 0;
+      for (var j = done; j < cmds.length; j++) send(cmds[j], 'voice: “' + text.trim() + '”');
+      fired[i] = Math.max(done, cmds.length);
+    }
+    heardEl.innerHTML = highlight(finalText) + '<span class="interim">' + highlight(interimText) + '</span>';
+  };
+  rec.onerror = function (e) {
+    if (e.error === 'no-speech' || e.error === 'aborted') return;
+    if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+      listening = false; updateBtn();
+      setStatus('Microphone blocked (' + e.error + '). Allow mic access for this site; on a phone use the HTTPS address. On a Mac with Safari, turn on Dictation in System Settings › Keyboard.', true);
+    } else setStatus('Recognition error: ' + e.error, true);
+  };
+  rec.onstart = function () { setStatus('Listening (' + rec.lang + ')…'); };
+  // Browsers stop continuous recognition after a pause or a minute; restart while the user wants to listen.
+  rec.onend = function () { if (listening) { try { start(); } catch (err) { setTimeout(start, 300); } } else setStatus('Stopped.'); };
+  rec.start();
+}
+
+function updateBtn() {
+  micBtn.textContent = listening ? '■ Stop listening' : '🎤 Start listening';
+  micBtn.classList.toggle('listening', listening);
+}
+micBtn.onclick = function () {
+  if (!SR) return;
+  listening = !listening; updateBtn();
+  if (listening) start(); else if (rec) rec.stop();
+};
+langSel.onchange = function () { if (listening && rec) rec.stop(); }; // onend restarts with the new language
+</script>
+</body>
+</html>
